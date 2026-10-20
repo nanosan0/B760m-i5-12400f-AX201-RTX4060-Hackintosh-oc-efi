@@ -1,6 +1,6 @@
 # Hackintosh EFI · ASUS TX GAMING B760M WIFI D4
 
-> OpenCore **1.0.8** 引导配置 · Intel i5-12400F · NVIDIA 独显（NullMoth Metal 驱动）  
+> OpenCore **1.0.8** 引导配置 · Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
 > 已通过官方 `ocvalidate` 1.0.8 校验：**No issues found.**
 
 这是一份经过逐项审计的 OpenCore EFI。所有配置项都能在官方 `Configuration.tex` 中找到依据，没有来路不明的键，也没有靠「抄别人的 EFI」堆出来的参数。
@@ -41,7 +41,7 @@
 | 主板   | ASUS TX GAMING B760M WIFI D4              | ✅                                        |
 | CPU  | Intel Core i5-12400F (Alder Lake, 6P/12T) | ✅ 需 `CPUFriend`                          |
 | 核显   | 无（F 后缀无 iGPU）                             | —                                        |
-| 独显   | NVIDIA GeForce（Turing 及更新架构）              | ⚠️ 第三方 Metal 驱动，装于 `/Library/Extensions` |
+| 独显   | NVIDIA GeForce RTX 4060（Ada 架构）              | ⚠️ 第三方 Metal 驱动，装于 `/Library/Extensions` |
 | 有线网卡 | Realtek RTL8125 2.5GbE                    | ✅ `RTL812xLucy`                          |
 | 无线网卡 | Intel Wi-Fi 6 AX201                       | ✅ `AirportItlwm` + OCLP-Mod              |
 | 蓝牙   | Intel 蓝牙（AX201 集成）                        | ✅ `IntelBluetoothFirmware`               |
@@ -150,7 +150,7 @@ Metal App → NVMTLDriver.bundle → 翻译器 (AIR → SPIR-V) → NVK (Mesa Vu
 | GSP 固件                               | `/Users/Shared/nvfw/nvidia/…` | NVIDIA 原厂固件                                  |
 
 **支持范围**：Turing 及更新架构 —— GTX 16 系、RTX 20 / 30 / 40 / 50、TITAN RTX、Quadro RTX、T 系列。  
-作者主要在 RTX 5060 上测试，其他型号可能存在尚未发现的问题。
+**本机是 Ada 架构的 RTX 4060**，属于官方设备表覆盖范围。作者主要在 RTX 5060 上测试，其他型号可能存在尚未发现的问题。
 
 > **关键：这些 kext 绝对不要在 `EFI/OC/Kexts` 里注入。**  
 > 它们从 Auxiliary Kernel Collection 加载，OpenCore 只负责设置 SIP 和 boot-args。  
@@ -407,3 +407,11 @@ system_profiler SPDisplaysDataType | head -20
 - [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher)
 - [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS)
 - [USBToolBox](https://github.com/USBToolBox/tool)
+
+---
+
+## 关于本文档
+
+**本安装说明由 AI 生成**，仅供参考。
+
+文中内容取自 OpenCore 官方文档、`ocvalidate` 的实际输出、以及对本机 `config.plist` 的逐项比对。但硬件组合、驱动版本与系统行为都会随上游项目更新而变化 —— 动手前请核对各项目的官方文档并做好备份，不要仅凭本文操作。
