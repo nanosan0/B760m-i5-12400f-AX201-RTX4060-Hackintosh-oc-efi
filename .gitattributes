@@ -1,0 +1,9 @@
+# EFI 分区里全是二进制，禁止任何换行符转换
+* -text
+
+*.efi  binary
+*.aml  binary
+*.icns binary
+*.bin  binary
+*.png  binary
+*.hex  binary

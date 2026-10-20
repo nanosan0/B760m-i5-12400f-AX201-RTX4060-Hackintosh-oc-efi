@@ -1,0 +1,13 @@
+# macOS 在 FAT32 上留下的垃圾
+._*
+.DS_Store
+__MACOSX/
+
+# 配置历史备份（工具自动生成，不入库）
+EFI/OC/config.plist.*
+EFI/OC/oldConfig.plist
+
+# OpenCore 运行时产物
+opencore-*.txt
+panic-*.txt
+SysReport/
