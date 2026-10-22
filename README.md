@@ -1,5 +1,7 @@
 # Hackintosh EFI · ASUS TX GAMING B760M WIFI D4
 
+**简体中文** · [English](README_EN.md) · 🌐 [网页版说明（可切换语言）](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
+
 > OpenCore **1.0.8** 引导配置 · Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
 > 已通过官方 `ocvalidate` 1.0.8 校验：**No issues found.**
 

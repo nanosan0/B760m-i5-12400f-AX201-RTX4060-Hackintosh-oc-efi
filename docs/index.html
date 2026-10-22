@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hackintosh EFI 说明 · B760M / i5-12400F / RTX 4060</title>
+<meta name="description" content="ASUS TX GAMING B760M WIFI D4 + i5-12400F + AX201 + RTX 4060 的 OpenCore 1.0.8 EFI 安装说明（中文 / English）">
+<style>
+:root{
+  --bg:#fbfaf9; --surface:#ffffff; --surface-2:#f4f2f0;
+  --text:#1c1917; --muted:#6f6862; --line:#e5e0da;
+  --accent:#0d7d74; --accent-2:#c0392b; --code-bg:#f6f4f1;
+  --shadow:0 1px 2px rgba(28,25,23,.05),0 8px 24px -12px rgba(28,25,23,.12);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#131518; --surface:#1a1d21; --surface-2:#22262b;
+    --text:#e8e4e0; --muted:#9a938d; --line:#2e3339;
+    --accent:#4bbfae; --accent-2:#e8766a; --code-bg:#20242a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+       "Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+header.top{
+  position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(1.6) blur(12px);border-bottom:1px solid var(--line);
+}
+.top-in{max-width:1180px;margin:0 auto;padding:12px 22px;display:flex;
+  align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:1px;min-width:0}
+.brand b{font-size:15px;letter-spacing:.01em}
+.brand span{font-size:12px;color:var(--muted)}
+.spacer{flex:1}
+.switch{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:9px;padding:2px}
+.switch button{
+  appearance:none;border:0;background:transparent;color:var(--muted);
+  font:inherit;font-size:13px;padding:5px 13px;border-radius:7px;cursor:pointer;
+  transition:.15s;
+}
+.switch button:hover{color:var(--text)}
+.switch button[aria-pressed="true"]{background:var(--surface);color:var(--text);
+  box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;
+  border:1px solid var(--line);background:var(--surface);color:var(--text);
+  padding:6px 12px;border-radius:8px}
+.btn:hover{text-decoration:none;border-color:var(--accent)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:34px 22px 90px;
+  display:grid;grid-template-columns:236px minmax(0,1fr);gap:44px;align-items:start}
+.toc{position:sticky;top:76px;font-size:13.5px;max-height:calc(100vh - 100px);
+  overflow:auto;padding-right:8px}
+.toc-t{margin:0 0 10px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:600}
+.toc a{display:block;color:var(--muted);padding:3px 0 3px 10px;
+  border-left:2px solid var(--line);line-height:1.45}
+.toc a:hover{color:var(--text);text-decoration:none;border-left-color:var(--accent)}
+.toc a.l3{padding-left:22px;font-size:12.8px}
+.toc a.l4{padding-left:32px;font-size:12.3px;opacity:.85}
+
+article{max-width:840px;min-width:0}
+article h2{font-size:24px;line-height:1.35;margin:52px 0 14px;padding-top:14px;
+  border-top:1px solid var(--line);scroll-margin-top:80px}
+article h2:first-child{margin-top:0;border-top:0;padding-top:0}
+article h3{font-size:18.5px;margin:34px 0 10px;scroll-margin-top:80px}
+article h4{font-size:16px;margin:26px 0 8px;color:var(--text);scroll-margin-top:80px}
+article p{margin:12px 0}
+article ul,article ol{margin:12px 0;padding-left:24px}
+article li{margin:5px 0}
+article li>ul,article li>ol{margin:6px 0}
+article hr{border:0;border-top:1px solid var(--line);margin:34px 0}
+article code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.875em;background:var(--code-bg);border:1px solid var(--line);
+  padding:.1em .38em;border-radius:5px;word-break:break-word}
+article pre{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;
+  padding:15px 17px;overflow:auto;margin:14px 0;line-height:1.6}
+article pre code{background:none;border:0;padding:0;font-size:12.9px;white-space:pre}
+article blockquote{margin:16px 0;padding:12px 16px;border-left:3px solid var(--accent);
+  background:var(--surface-2);border-radius:0 8px 8px 0;color:var(--text)}
+article blockquote p{margin:6px 0}
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px;
+  background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:14.2px}
+th,td{padding:9px 13px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--surface-2);font-weight:600;font-size:13px;white-space:nowrap;
+  letter-spacing:.02em}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 4%,transparent)}
+td code{white-space:nowrap}
+
+.hero{max-width:1180px;margin:0 auto;padding:38px 22px 0}
+.hero h1{font-size:clamp(24px,3.4vw,34px);line-height:1.25;margin:0 0 10px;
+  letter-spacing:-.015em}
+.hero p{margin:0;color:var(--muted);font-size:14.5px}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;
+  background:var(--surface-2);border:1px solid var(--line);color:var(--muted);
+  padding:3px 10px;border-radius:999px;margin-bottom:14px}
+
+html[data-lang="zh"] [data-article="en"],
+html[data-lang="en"] [data-article="zh"]{display:none}
+
+footer{max-width:1180px;margin:0 auto;padding:26px 22px 60px;color:var(--muted);
+  font-size:12.8px;border-top:1px solid var(--line)}
+footer p{margin:4px 0}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr;gap:18px;padding-top:24px}
+  .toc{position:static;max-height:none;border:1px solid var(--line);
+    background:var(--surface);border-radius:10px;padding:12px 14px;display:none}
+  .toc.open{display:block}
+  .toc a{padding-left:8px}
+  article h2{margin-top:38px}
+}
+@media print{
+  header.top,.toc{display:none}
+  .wrap{grid-template-columns:1fr;padding:0}
+  .tw{box-shadow:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <b>Hackintosh EFI</b>
+      <span>B760M WIFI D4 · i5-12400F · RTX 4060 · OpenCore 1.0.8</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="switch" role="group" aria-label="Language / 语言">
+      <button type="button" data-lang-btn="zh" aria-pressed="true">中文</button>
+      <button type="button" data-lang-btn="en" aria-pressed="false">English</button>
+    </div>
+    <a class="btn" href="https://github.com/nanosan0/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi">GitHub</a>
+    <a class="btn" href="https://github.com/nanosan0/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/releases/tag/v1.0.1">下载 v1.0.1</a>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="pill" data-article="zh">OpenCore 1.0.8 · 已通过 ocvalidate 校验</div>
+  <div class="pill" data-article="en">OpenCore 1.0.8 · verified with ocvalidate</div>
+  <h1 data-article="zh">ASUS TX GAMING B760M WIFI D4 黑苹果 EFI 说明</h1>
+  <h1 data-article="en">ASUS TX GAMING B760M WIFI D4 Hackintosh EFI Documentation</h1>
+  <p data-article="zh">Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）· 目标系统 macOS 26 Tahoe</p>
+  <p data-article="en">Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver) · target OS macOS 26 Tahoe</p>
+</div>
+
+<div class="wrap">
+  <div>
+    <div data-article="zh"><nav class="toc" aria-label="目录">
+<p class="toc-t">目录</p>
+<a class="l2" href="#先读这一段">⚠️ 先读这一段</a>
+<a class="l2" href="#硬件">硬件</a>
+<a class="l2" href="#软件版本">软件版本</a>
+<a class="l2" href="#目录结构">目录结构</a>
+<a class="l2" href="#安装">安装</a>
+<a class="l2" href="#配置要点-为什么是这么写的">配置要点：为什么是这么写的</a>
+<a class="l3" href="#1-securebootmodel-disabled-与-fixupappleefiimages">1. SecureBootModel = Disabled 与 FixupAppleEfiImages</a>
+<a class="l3" href="#2-显卡-nullmoth-nvidia-driver">2. 显卡：NullMoth NVIDIA Driver</a>
+<a class="l4" href="#驱动对-opencore-的要求-本配置逐条核对">驱动对 OpenCore 的要求（本配置逐条核对）</a>
+<a class="l4" href="#安装">安装</a>
+<a class="l4" href="#gfxrst-4-到底是干什么的">gfxrst=4 到底是干什么的</a>
+<a class="l4" href="#排障用-boot-args-平时不要加">排障用 boot-args（平时不要加）</a>
+<a class="l3" href="#3-kernel-block-的三条屏蔽">3. Kernel &gt; Block 的三条屏蔽</a>
+<a class="l3" href="#4-wi-fi-的三段式依赖">4. Wi-Fi 的三段式依赖</a>
+<a class="l3" href="#5-boot-args-逐条">5. boot-args 逐条</a>
+<a class="l3" href="#6-日志已关闭">6. 日志已关闭</a>
+<a class="l3" href="#7-其他关键项">7. 其他关键项</a>
+<a class="l2" href="#这台机器上做过什么修复">这台机器上做过什么修复</a>
+<a class="l2" href="#已知限制">已知限制</a>
+<a class="l2" href="#常见安装问题排查">常见安装问题排查</a>
+<a class="l3" href="#a-卡在选单-还进不了-macos">A. 卡在选单 / 还进不了 macOS</a>
+<a class="l3" href="#b-驱动装好之后的显示问题">B. 驱动装好之后的显示问题</a>
+<a class="l3" href="#c-出问题了怎么退回去-最重要的一段">C. 出问题了怎么退回去（最重要的一段）</a>
+<a class="l4" href="#选单里看不到那两个-1401-条目">选单里看不到那两个 1401 条目？</a>
+<a class="l3" href="#d-确认驱动到底有没有加载">D. 确认驱动到底有没有加载</a>
+<a class="l3" href="#e-拿日志">E. 拿日志</a>
+<a class="l3" href="#f-从-macos-15-升级到-26-后-开机出现-文件保险箱-正确密码也解不开">F. 从 macOS 15 升级到 26 后，开机出现「文件保险箱」，正确密码也解不开</a>
+<a class="l2" href="#版权与归属">版权与归属</a>
+<a class="l2" href="#免责声明">免责声明</a>
+<a class="l2" href="#参考">参考</a>
+<a class="l2" href="#关于本文档">关于本文档</a>
+</nav></div>
+    <div data-article="en"><nav class="toc" aria-label="Contents">
+<p class="toc-t">Contents</p>
+<a class="l2" href="#read-this-first">⚠️ Read this first</a>
+<a class="l2" href="#hardware">Hardware</a>
+<a class="l2" href="#software-versions">Software versions</a>
+<a class="l2" href="#directory-layout">Directory layout</a>
+<a class="l2" href="#installation">Installation</a>
+<a class="l2" href="#configuration-notes-why-it-is-written-this-way">Configuration notes: why it is written this way</a>
+<a class="l3" href="#1-securebootmodel-disabled-and-fixupappleefiimages">1. SecureBootModel = Disabled and FixupAppleEfiImages</a>
+<a class="l3" href="#2-graphics-nullmoth-nvidia-driver">2. Graphics: NullMoth NVIDIA driver</a>
+<a class="l4" href="#what-the-driver-requires-from-opencore-checked-item-by-item-here">What the driver requires from OpenCore (checked item by item here)</a>
+<a class="l4" href="#installing">Installing</a>
+<a class="l4" href="#what-gfxrst-4-actually-does">What gfxrst=4 actually does</a>
+<a class="l4" href="#troubleshooting-boot-args-do-not-add-these-normally">Troubleshooting boot-args (do not add these normally)</a>
+<a class="l3" href="#3-the-three-kernel-block-entries">3. The three Kernel &gt; Block entries</a>
+<a class="l3" href="#4-the-three-stage-wi-fi-dependency">4. The three-stage Wi-Fi dependency</a>
+<a class="l3" href="#5-boot-args-one-by-one">5. boot-args, one by one</a>
+<a class="l3" href="#6-logging-is-off">6. Logging is off</a>
+<a class="l3" href="#7-other-important-keys">7. Other important keys</a>
+<a class="l2" href="#what-has-been-fixed-on-this-machine">What has been fixed on this machine</a>
+<a class="l2" href="#known-limitations">Known limitations</a>
+<a class="l2" href="#common-installation-problems">Common installation problems</a>
+<a class="l3" href="#a-stuck-in-the-picker-cannot-reach-macos-yet">A. Stuck in the picker / cannot reach macOS yet</a>
+<a class="l3" href="#b-display-problems-after-the-driver-is-installed">B. Display problems after the driver is installed</a>
+<a class="l3" href="#c-how-to-roll-back-when-something-breaks-the-most-important-section">C. How to roll back when something breaks (the most important section)</a>
+<a class="l4" href="#cannot-find-those-two-1401-entries-in-the-picker">Cannot find those two 1401 entries in the picker?</a>
+<a class="l3" href="#d-verify-whether-the-driver-actually-loaded">D. Verify whether the driver actually loaded</a>
+<a class="l3" href="#e-getting-logs">E. Getting logs</a>
+<a class="l3" href="#f-after-upgrading-from-macos-15-to-26-filevault-appears-at-boot-and-even-the-correct-password-is-rejected">F. After upgrading from macOS 15 to 26, FileVault appears at boot and even the correct password is rejected</a>
+<a class="l2" href="#copyright-and-attribution">Copyright and attribution</a>
+<a class="l2" href="#disclaimer">Disclaimer</a>
+<a class="l2" href="#references">References</a>
+<a class="l2" href="#about-this-document">About this document</a>
+</nav></div>
+  </div>
+
+  <main>
+    <article data-article="zh" lang="zh-CN">
+<blockquote><p>OpenCore <strong>1.0.8</strong> 引导配置 · Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）<br>已通过官方 <code>ocvalidate</code> 1.0.8 校验：<strong>No issues found.</strong></p></blockquote>
+<p>这是一份经过逐项审计的 OpenCore EFI。所有配置项都能在官方 <code>Configuration.tex</code> 中找到依据，没有来路不明的键，也没有靠「抄别人的 EFI」堆出来的参数。</p>
+<hr>
+<h2 id="先读这一段">⚠️ 先读这一段</h2>
+<p><strong>这个仓库里的 SMBIOS 三码是占位符，直接拿来用是启动不了的。</strong></p>
+<pre><code class="lang-xml">&lt;string&gt;MLB-GOES-HERE&lt;/string&gt;          
+&lt;string&gt;SERIAL-GOES-HERE&lt;/string&gt;       
+&lt;string&gt;UUID-GOES-HERE&lt;/string&gt;         
+&lt;data&gt;AAAAAAAA&lt;/data&gt;                    </code></pre>
+<p>请用 <a href="https://github.com/corpnewt/GenSMBIOS">GenSMBIOS</a> 为机型 <strong>MacPro7,1</strong> 生成你自己的三码，填进 <code>EFI/OC/config.plist</code> 的 <code>PlatformInfo → Generic</code>：</p>
+<div class="tw"><table><thead><tr><th>字段</th><th>怎么填</th></tr></thead><tbody><tr><td><code>SystemProductName</code></td><td>保持 <code>MacPro7,1</code></td></tr><tr><td><code>SystemSerialNumber</code></td><td>GenSMBIOS 生成的 Serial</td></tr><tr><td><code>MLB</code></td><td>GenSMBIOS 生成的 MLB</td></tr><tr><td><code>SystemUUID</code></td><td>GenSMBIOS 生成的 SmUUID</td></tr><tr><td><code>ROM</code></td><td>你网卡的 MAC 地址（6 字节），GenSMBIOS 会自动生成</td></tr></tbody></table></div>
+<blockquote><p>为什么不直接放作者的：公开发布真实三码会让别人也能用同一个身份登录 iMessage / FaceTime，最终导致该序列号被 Apple 拉黑，对谁都没好处。</p></blockquote>
+<hr>
+<h2 id="硬件">硬件</h2>
+<div class="tw"><table><thead><tr><th>部件</th><th>型号</th><th>状态</th></tr></thead><tbody><tr><td>主板</td><td>ASUS TX GAMING B760M WIFI D4</td><td>✅</td></tr><tr><td>CPU</td><td>Intel Core i5-12400F (Alder Lake, 6P/12T)</td><td>✅ 需 <code>CPUFriend</code></td></tr><tr><td>核显</td><td>无（F 后缀无 iGPU）</td><td>—</td></tr><tr><td>独显</td><td>NVIDIA GeForce RTX 4060（Ada 架构）</td><td>⚠️ 第三方 Metal 驱动，装于 <code>/Library/Extensions</code></td></tr><tr><td>有线网卡</td><td>Realtek RTL8125 2.5GbE</td><td>✅ <code>RTL812xLucy</code></td></tr><tr><td>无线网卡</td><td>Intel Wi-Fi 6 AX201</td><td>✅ <code>AirportItlwm</code> + OCLP-Mod</td></tr><tr><td>蓝牙</td><td>Intel 蓝牙（AX201 集成）</td><td>✅ <code>IntelBluetoothFirmware</code></td></tr><tr><td>声卡</td><td>Realtek ALC897</td><td>✅ <code>layout-id = 77</code></td></tr><tr><td>存储</td><td>NVMe SSD</td><td>✅ <code>NVMeFix</code></td></tr></tbody></table></div>
+<hr>
+<h2 id="软件版本">软件版本</h2>
+<div class="tw"><table><thead><tr><th>组件</th><th>版本</th></tr></thead><tbody><tr><td>EFI 版本</td><td>v1.0.1（2026-10-22）</td></tr><tr><td>OpenCore</td><td>1.0.8（x64，PE Machine <code>0x8664</code>）</td></tr><tr><td>显卡驱动</td><td><a href="https://github.com/nullmoth/nvidia-macos-driver">NullMoth nvidia-macos-driver</a>（Metal 翻译层，Turing+）</td></tr><tr><td>目标系统</td><td>macOS 26 Tahoe（本配置按 <strong>Ventura 版 <code>AirportItlwm</code></strong> + OCLP-Mod 根补丁适配）</td></tr><tr><td>Lilu</td><td>1.7.3</td></tr><tr><td>VirtualSMC</td><td>1.3.9（含 SMCProcessor / SMCSuperIO）</td></tr><tr><td>WhateverGreen</td><td>1.7.2</td></tr><tr><td>AppleALC</td><td>1.9.9</td></tr><tr><td>RestrictEvents</td><td>1.1.7</td></tr><tr><td>CPUFriend + DataProvider</td><td>1.3.1 / 1.0.1</td></tr><tr><td>NVMeFix</td><td>1.1.4</td></tr><tr><td>AMFIPass</td><td>1.4.1</td></tr><tr><td>AirportItlwm</td><td>2.3.0（<strong>Ventura 构建</strong>）</td></tr><tr><td>IntelBluetoothFirmware / BTPatcher</td><td>2.5.0</td></tr><tr><td>BlueToolFixup</td><td>2.6.9</td></tr><tr><td>USBToolBox + UTBMap</td><td>1.2.0 / 1.1</td></tr><tr><td>RTL812xLucy</td><td>1.1.1</td></tr></tbody></table></div>
+<hr>
+<h2 id="目录结构">目录结构</h2>
+<pre><code>EFI/
+├── BOOT/
+│   └── BOOTx64.efi
+└── OC/
+    ├── ACPI/                 6 个 SSDT
+    │   ├── SSDT-EC.aml               嵌入式控制器（必须）
+    │   ├── SSDT-PLUG-ALT.aml         CPU 电源管理（12 代必需）
+    │   ├── SSDT-USBX.aml             USB 供电属性
+    │   ├── SSDT-USB-Reset.aml        USB 复位
+    │   ├── SSDT-RTCAWAC.aml          RTC 唤醒修复
+    │   └── SSDT-SBUS.aml             SBUS 设备
+    ├── Drivers/              5 个 UEFI 驱动
+    │   ├── HfsPlus.efi               读 HFS+ 分区
+    │   ├── apfs_aligned.efi          APFS 驱动（文件保险箱解锁）
+    │   ├── OpenRuntime.efi           运行时服务（必须）
+    │   ├── ResetNvramEntry.efi       开机菜单里的重置 NVRAM 项
+    │   └── OpenCanopy.efi            图形化启动菜单
+    ├── Kexts/                22 个启用的 kext
+    ├── Resources/            GoldenGate 主题（26 个图标）
+    ├── Tools/                OpenShell.efi
+    └── config.plist</code></pre>
+<hr>
+<h2 id="安装">安装</h2>
+<ol>
+<li><strong>准备一个 ≥ 200 MB 的 FAT32 U 盘</strong>（或直接用你的 ESP 分区）。</li>
+<li>把本仓库的 <code>EFI/</code> 整个复制到 U 盘根目录，形成 <code>U盘/EFI/BOOT/BOOTx64.efi</code> 这样的结构。<blockquote><p>注意是复制 <code>EFI</code> 这一层，不要变成 <code>EFI/EFI/BOOT</code>。</p></blockquote></li>
+<li><strong>填好你的三码</strong>（见开头警告）。</li>
+<li>BIOS 设置：<ul>
+<li><code>Secure Boot</code> → <strong>Disabled</strong></li>
+<li><code>Fast Boot</code> → <strong>Disabled</strong></li>
+<li><code>VT-d</code> → Disabled（或保持开启 + 依赖 <code>DisableIoMapper</code>）</li>
+<li><code>Above 4G Decoding</code> → <strong>Enabled</strong></li>
+<li><code>Re-Size BAR Support</code> → Enabled（与 <code>ResizeGpuBars</code> 配合）</li>
+<li><code>CFG-Lock</code> → Disabled（若找不到此项，配置里已开 <code>AppleXcpmCfgLock</code> 兜底）</li>
+<li><code>SATA Mode</code> → AHCI</li>
+</ul></li>
+<li>从 U 盘启动，进 macOS 安装器。</li>
+</ol>
+<hr>
+<h2 id="配置要点-为什么是这么写的">配置要点：为什么是这么写的</h2>
+<h3 id="1-securebootmodel-disabled-与-fixupappleefiimages">1. <code>SecureBootModel = Disabled</code> 与 <code>FixupAppleEfiImages</code></h3>
+<p>这两个是一对，缺一不可。</p>
+<p>官方 <code>Configuration.tex</code> 对 <code>FixupAppleEfiImages</code> 的原话：</p>
+<blockquote><p>On a system with such a modern, stricter loader this quirk is required to load Mac OS X 10.4 to macOS 10.12, and <strong>is required for all newer macOS when <code>SecureBootModel</code> is set to <code>Disabled</code></strong>.</p></blockquote>
+<p>macOS 的 <code>boot.efi</code> 本身带有 <code>W^X</code> 权限错误，严格的 PE 加载器会拒绝加载。本配置因为要配合 OCLP-Mod 根补丁，<code>SecureBootModel</code> 必须是 <code>Disabled</code>，所以 <code>FixupAppleEfiImages</code> <strong>必须</strong> 为 <code>true</code>。</p>
+<blockquote><p>很多从别处下载的 EFI 缺这个键（<code>ocvalidate</code> 会报 <code>Missing key</code>），因为它的 Failsafe 是 <code>false</code>，缺了就等同于关着 —— 平时能启动，遇到严格固件就卡住。</p></blockquote>
+<h3 id="2-显卡-nullmoth-nvidia-driver">2. 显卡：NullMoth NVIDIA Driver</h3>
+<p>NVIDIA 没有为近年的 macOS 提供官方驱动（Web Driver 时代早已终结）。这台机器用的是<br><strong><a href="https://github.com/nullmoth/nvidia-macos-driver">nullmoth/nvidia-macos-driver</a></strong> —— 一个把 Apple Metal 指令实时翻译成 Vulkan 的第三方 Metal 驱动。</p>
+<pre><code>Metal App → NVMTLDriver.bundle → 翻译器 (AIR → SPIR-V) → NVK (Mesa Vulkan) → NVRM / NVAccel / NVRMFB → GPU</code></pre>
+<div class="tw"><table><thead><tr><th>组件</th><th>落盘位置</th><th>作用</th></tr></thead><tbody><tr><td><code>NVMTLDriver.bundle</code></td><td><code>/Library/GPUBundles/</code></td><td>Metal 驱动插件</td></tr><tr><td><code>libnvmtl_translate.dylib</code></td><td>插件内部</td><td>着色器翻译（基于 metal2vulkan，LGPL-3.0）</td></tr><tr><td><code>nvk/</code></td><td><code>/Library/GPUBundles/nvmtl/</code></td><td>Vulkan 后端（Mesa + NAK 编译器）</td></tr><tr><td><code>NVRM</code> <code>NVAccel</code> <code>NVRMFB</code> <code>NVRMAGDC</code></td><td><code>/Library/Extensions/</code></td><td>内核扩展：驱动本体 / 加速器 / 显示 framebuffer / 显示策略 shim</td></tr><tr><td>GSP 固件</td><td><code>/Users/Shared/nvfw/nvidia/…</code></td><td>NVIDIA 原厂固件</td></tr></tbody></table></div>
+<p><strong>支持范围</strong>：Turing 及更新架构 —— GTX 16 系、RTX 20 / 30 / 40 / 50、TITAN RTX、Quadro RTX、T 系列。<br><strong>本机是 Ada 架构的 RTX 4060</strong>，属于官方设备表覆盖范围。作者主要在 RTX 5060 上测试，其他型号可能存在尚未发现的问题。</p>
+<blockquote><p><strong>关键：这些 kext 绝对不要在 <code>EFI/OC/Kexts</code> 里注入。</strong><br>它们从 Auxiliary Kernel Collection 加载，OpenCore 只负责设置 SIP 和 boot-args。<br>本仓库的 <code>config.plist</code> 里因此<strong>没有任何 NVIDIA 相关条目</strong> —— 这是正确的，不是漏配。</p></blockquote>
+<h4 id="驱动对-opencore-的要求-本配置逐条核对">驱动对 OpenCore 的要求（本配置逐条核对）</h4>
+<div class="tw"><table><thead><tr><th>要求</th><th>本配置</th><th>结果</th></tr></thead><tbody><tr><td>boot-args 含 <code>nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0</code></td><td>全部存在</td><td>✅</td></tr><tr><td>不能有 <code>nv_disable=1</code>、<code>-wegnoegpu</code>（两者都会把 NVIDIA 卡藏起来）</td><td>均无</td><td>✅</td></tr><tr><td><code>csr-active-config</code> 包含 <code>0x0A43</code> 位</td><td><code>0x0FFF</code>（超集，含该位）</td><td>✅</td></tr><tr><td><code>Misc &gt; Security &gt; SecureBootModel</code> = <code>Disabled</code></td><td>Disabled</td><td>✅</td></tr><tr><td><code>Lilu.kext</code> 与 <code>AMFIPass.kext</code> 在 <code>Kernel &gt; Add</code> 且启用</td><td>都在</td><td>✅</td></tr><tr><td><code>Kernel &gt; Block</code> 屏蔽 <code>com.apple.iokit.IONDRVSupport</code></td><td>已屏蔽</td><td>✅</td></tr><tr><td>不能有该卡的 WhateverGreen NVIDIA patch、不能有 <code>agdpmod=pikera</code></td><td>均无</td><td>✅</td></tr><tr><td>设进 NVRAM 的键必须同步写进 <code>NVRAM &gt; Delete</code></td><td><code>boot-args</code>、<code>csr-active-config</code> 都在</td><td>✅</td></tr><tr><td>机型须能被该 macOS 版本接受</td><td><code>MacPro7,1</code> —— 1401 从 1.14 起对带独显的台式机就是选它，macOS 15 与 26 都接受（<code>iMacPro1,1</code> 会被 macOS 26 拒绝）</td><td>✅</td></tr><tr><td>BIOS：Above 4G Decoding ON、CSM OFF</td><td>见上方「安装」章节第 4 步</td><td>—</td></tr></tbody></table></div>
+<p><strong>为什么 <code>SecureBootModel</code> 必须是 <code>Disabled</code></strong>：Apple Secure Boot 会拒绝 Apple 未签名的 kext，而 NVRM 系列正是未签名加载的。<br>这同时解释了 §1 里 <code>FixupAppleEfiImages</code> 为什么在这里是<strong>强制项</strong> —— 两者是同一条因果链上的上下游。</p>
+<h4 id="安装">安装</h4>
+<p>推荐用作者配套的 <strong>1401</strong> 应用（<a href="https://github.com/nullmoth/1401">nullmoth/1401</a>）：它会自动定位启动用的 OpenCore 分区、备份 <code>config.plist</code>、写入上面这些设置、安装驱动，并在启动菜单里加一条 <strong>1401: Remove NVIDIA driver</strong> 用于一键还原。</p>
+<p>手动安装则要 <code>install.sh</code> + 重建 Auxiliary Kernel Collection，且必须自己改对 OpenCore 配置 —— 顺序错了就是黑屏。</p>
+<blockquote><p>首次以驱动启动时，会停在 <code>PCI configuration end</code> 最多约一分钟等 GPU 起来，这是正常现象，不要以为卡死了。</p></blockquote>
+<h4 id="gfxrst-4-到底是干什么的"><code>gfxrst=4</code> 到底是干什么的</h4>
+<p><strong>不是显卡复位。</strong> 官方说明是：装了 WhateverGreen 的情况下，WhateverGreen 的启动画面拷贝会在 NVIDIA 显示打开时读取已释放的内存，导致 panic；<code>gfxrst=4</code> 就是消掉这个冲突的。<br>所以它跟显卡无关，跟 <strong>WhateverGreen</strong> 有关 —— 本机为 Intel 平台保留了 WEG，所以需要它。</p>
+<h4 id="排障用-boot-args-平时不要加">排障用 boot-args（平时不要加）</h4>
+<div class="tw"><table><thead><tr><th>参数</th><th>作用</th></tr></thead><tbody><tr><td><code>-nvrmnoflip</code></td><td>关闭零拷贝扫描输出，桌面闪烁 / 移动光标时撕裂优先试这个</td></tr><tr><td><code>-nvrmnopm</code></td><td>关闭系统睡眠支持，症状是「睡眠后唤醒显卡回不来」</td></tr><tr><td><code>-nvrmnogo</code></td><td>驱动先不自启，等 <code>nvrmctl go</code> 手动放行</td></tr><tr><td><code>-nvrmnobootscreen</code></td><td>不截取启动画面</td></tr></tbody></table></div>
+<h3 id="3-kernel-block-的三条屏蔽">3. <code>Kernel &gt; Block</code> 的三条屏蔽</h3>
+<div class="tw"><table><thead><tr><th>被屏蔽的 kext</th><th>原因</th></tr></thead><tbody><tr><td><code>com.apple.iokit.IOSkywalkFamily</code></td><td>用仓库里的改版替换，不屏蔽的话系统原版会抢先加载，Intel 网卡起不来</td></tr><tr><td><code>com.apple.driver.AppleEthernetRL</code></td><td>系统自带 RTL 驱动与本机的 <code>RTL812xLucy</code> 冲突</td></tr><tr><td><code>com.apple.iokit.IONDRVSupport</code></td><td>不屏蔽的话，固件自带的 framebuffer 会从 <code>NVRMFB</code> 手里抢走 display index 0，NVIDIA 输出起不来</td></tr></tbody></table></div>
+<h3 id="4-wi-fi-的三段式依赖">4. Wi-Fi 的三段式依赖</h3>
+<p>Intel 网卡在 macOS 14+ 上<strong>不是</strong>只放一个 <code>AirportItlwm</code> 就够：</p>
+<pre><code>IOSkywalkFamily.kext            ← 网卡协议栈基座（Apple 原版，需屏蔽系统同名 kext）
+IO80211FamilyLegacy.kext        ← 老版 802.11 框架
+└── AirPortBrcmNIC.kext         ← 它的插件，名字带 Brcm 但 Intel 也靠它挂载
+AirportItlwm-Ventura.kext       ← 真正的 Intel 驱动（Ventura 构建）</code></pre>
+<blockquote><p>这三个 Apple 原版文件不是「Broadcom 专用、装在 Intel 机上白装」。凡是看到这种说法，都是误判。</p>
+<p>为什么用 <strong>Ventura 构建</strong> 的 AirportItlwm：Tahoe 上的社区方案就是 Ventura 构建 + OCLP-Mod 根补丁，Sequoia 构建在 Tahoe 上不工作。</p></blockquote>
+<h3 id="5-boot-args-逐条">5. boot-args 逐条</h3>
+<pre><code>keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0
+nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4</code></pre>
+<div class="tw"><table><thead><tr><th>参数</th><th>作用</th></tr></thead><tbody><tr><td><code>keepsyms=1</code></td><td>内核崩溃时保留函数符号，否则 panic 日志全是裸地址。<strong>不要删</strong></td></tr><tr><td><code>amfi_get_out_of_my_way=0x1</code> <code>amfi=0x80</code></td><td>关闭 AMFI 校验，配合 <code>AMFIPass</code> + 根补丁</td></tr><tr><td><code>ipc_control_port_options=0</code></td><td>修复部分 App 的 XPC 通信</td></tr><tr><td><code>nvfb=1</code> <code>nvaccel=1</code> <code>nvfbheads=4</code></td><td>NullMoth 驱动的必需项：启用 framebuffer、启用 NVAccel 加速、4 个显示头</td></tr><tr><td><code>-nvkmsnosmooth</code></td><td>同上（驱动必需），关闭 nvkms 平滑缩放</td></tr><tr><td><code>-lilubetaall</code></td><td>允许 Lilu 及其插件在较新的系统版本上加载</td></tr><tr><td><code>gfxrst=4</code></td><td>装了 WhateverGreen 时必需：否则 WEG 的启动画面拷贝会在 NVIDIA 显示打开时读已释放内存，直接 panic</td></tr></tbody></table></div>
+<h3 id="6-日志已关闭">6. 日志已关闭</h3>
+<p><code>Misc &gt; Debug &gt; Target</code> 设为 <strong>0</strong>。官方定义：<code>0x01</code> 位是总开关，关掉后「all log is discarded」，ESP 分区根目录不会再生成 <code>opencore-*.txt</code>；<code>AppleDebug</code>、<code>ApplePanic</code>、<code>DisableWatchDog</code> 一并置 <code>false</code>。</p>
+<p>需要抓日志排查时：</p>
+<pre><code class="lang-xml">&lt;key&gt;Target&lt;/key&gt;&lt;integer&gt;67&lt;/integer&gt;   
+&lt;key&gt;AppleDebug&lt;/key&gt;&lt;true/&gt;
+&lt;key&gt;ApplePanic&lt;/key&gt;&lt;true/&gt;</code></pre>
+<p>再在 boot-args 前面加回 <code>debug=0x100</code>。</p>
+<h3 id="7-其他关键项">7. 其他关键项</h3>
+<div class="tw"><table><thead><tr><th>键</th><th>值</th><th>说明</th></tr></thead><tbody><tr><td><code>Misc &gt; Security &gt; ScanPolicy</code></td><td><code>0</code></td><td>不限制扫描范围，方便从任意分区启动</td></tr><tr><td><code>Misc &gt; Security &gt; Vault</code></td><td><code>Optional</code></td><td>不做文件保管库校验</td></tr><tr><td><code>csr-active-config</code></td><td><code>0x0FFF</code></td><td>SIP 基本全关，根补丁需要</td></tr><tr><td><code>DeviceProperties</code></td><td><code>layout-id = 77</code></td><td>ALC897 的可用 layout</td></tr><tr><td><code>PlatformInfo &gt; UpdateSMBIOSMode</code></td><td><code>Custom</code></td><td>配合 <code>SpoofVendor = true</code></td></tr><tr><td><code>UEFI &gt; Output &gt; Resolution</code></td><td><code>Max</code></td><td>用显示器原生分辨率</td></tr><tr><td><code>Misc &gt; Boot &gt; PickerVariant</code></td><td><code>Acidanthera\GoldenGate</code></td><td>图形化选单主题</td></tr></tbody></table></div>
+<hr>
+<h2 id="这台机器上做过什么修复">这台机器上做过什么修复</h2>
+<p>本 EFI 经过完整审计，修掉了以下问题（记录见 commit 历史）：</p>
+<div class="tw"><table><thead><tr><th>问题</th><th>处理</th></tr></thead><tbody><tr><td><code>SSDT-USBX.aml</code> 在配置里 <code>Enabled=true</code> 但文件不存在</td><td>补回文件，USB 供电属性恢复注入</td></tr><tr><td><code>FixupAppleEfiImages</code> 缺失（<code>SecureBootModel=Disabled</code> 下的必需项）</td><td>补为 <code>true</code></td></tr><tr><td>15 处 schema 缺键，<code>ocvalidate</code> 报 16 项</td><td>全部补齐，校验清零</td></tr><tr><td><code>Misc &gt; Debug</code> 开着文件日志（<code>Target=67</code>）</td><td>关闭</td></tr><tr><td>一个未被引用的孤儿 kext（15.4 MB）</td><td>从仓库剔除</td></tr><tr><td>升级 macOS 26 后开机弹文件保险箱，正确密码也无法解锁</td><td>换用显式 <code>apfs_aligned.efi</code>，关闭 <code>EnableJumpstart</code></td></tr></tbody></table></div>
+<hr>
+<h2 id="已知限制">已知限制</h2>
+<ul>
+<li><strong>显卡驱动是第三方逆向工程产物。</strong> 驱动的 kext 装在 <code>/Library/Extensions</code> 并从 Auxiliary Kernel Collection 加载，macOS 每次大版本升级都可能需要等驱动跟进新版本。升级系统前务必先看 <a href="https://github.com/nullmoth/nvidia-macos-driver/releases">releases</a> 和 <code>CHANGELOG</code>。</li>
+<li><strong>显卡只支持 Turing 及更新架构。</strong> Pascal、Maxwell 等更老的卡不在支持范围内。</li>
+<li><strong>Wi-Fi 需要根补丁。</strong> 同上，<code>AirportItlwm</code> 装进 <code>/Library/Extensions</code> 后依赖 OCLP-Mod 补丁链。</li>
+<li><strong><code>i5-12400F</code> 无核显</strong>，无法使用 Sidecar / 随航的硬件编码，也无法在无独显时启动 GUI。</li>
+<li><strong>不保证移植到其他主板可用。</strong> ACPI 中的 <code>SSDT-RTCAWAC</code>、<code>SSDT-SBUS</code> 是针对这块板子生成的；换主板请重新生成。</li>
+<li><strong>macOS 大版本升级前请先备份 EFI</strong>，并确认 kext 已跟进。</li>
+</ul>
+<hr>
+<h2 id="常见安装问题排查">常见安装问题排查</h2>
+<blockquote><p>第一件事永远是：<strong>用最新版的 1401 和驱动</strong>。下面很多问题在后续版本里已经修掉了，而用旧版 1401 做的 U 盘会一直带着旧问题，除非重做一次。</p></blockquote>
+<h3 id="a-卡在选单-还进不了-macos">A. 卡在选单 / 还进不了 macOS</h3>
+<div class="tw"><table><thead><tr><th>现象</th><th>原因</th><th>处理</th></tr></thead><tbody><tr><td>停在 <code>PCI configuration</code></td><td>通常是 Resizable BAR 或 Above 4G Decoding 的设置</td><td>BIOS 里打开 Above 4G Decoding、关掉 CSM。仍卡住就导出 U 盘日志</td></tr><tr><td><code>EB.MM.AKM</code>、<code>STOP 0x16</code>、<code>StartImage failed - Aborted</code>、<code>Couldn't allocate runtime area</code></td><td>固件内存映射没给 <code>boot.efi</code> 留出空间（Ryzen 7000/9000 上常见）</td><td>用最新 1401 重做 U 盘 —— 它会套用正确的内存设置，一组失败会自动换下一组。重启旧 U 盘没用</td></tr><tr><td>停在 <code>EXITBS:START</code></td><td>macOS 已从固件接管，但在打印任何东西之前就停了。Intel 12 代及更新、AMD 笔记本上多为 CPU 核心布局或内存映射问题</td><td>先用最新 1401；再导出 U 盘的 <code>opencore-*.txt</code>；若出现 panic，在啰嗦模式下把整屏拍下来</td></tr><tr><td><code>This version of Mac OS X is not supported on this platform!</code> 加一串 <code>Mac-…</code> 代码</td><td>配置里的机型不是这个 macOS 版本接受的机型。<strong>macOS 26 会拒绝 <code>iMacPro1,1</code></strong>，macOS 15 拒绝一批更老的机型</td><td>用 <code>MacPro7,1</code> —— 1401 从 1.14 起对带独显的台式机就是选它，macOS 15 和 26 都接受。<strong>本仓库正是 <code>MacPro7,1</code></strong></td></tr><tr><td>安装进度到约 19 分钟时整个冻住（Caps Lock 都不亮），Ryzen 7000/8000/9000</td><td>这些主板在安装器写固件设置时会挂住</td><td>重做 U 盘（1.14 已修）。自己维护 EFI 的话设 <code>Booter &gt; Quirks &gt; DisableVariableWrite = true</code></td></tr><tr><td><code>OCB: LoadImage failed - Unsupported</code>、<code>Failed to retrieve boot file from DMG</code></td><td>U 盘上的恢复镜像损坏</td><td>换一个 U 盘重做（1.14 写完会回读校验）</td></tr><tr><td><code>OS.dmg.root_hash … Err(0xE)</code></td><td>旧版 1401 做的 U 盘，或恢复镜像与目标 macOS 版本不匹配</td><td>用最新 1401 重做</td></tr><tr><td>选完 U 盘后偶尔卡住，重做一次又好了</td><td>U 盘或接口在读那 900 MB 恢复镜像时太慢/不稳</td><td>换机箱后面的 USB 口，或换 U 盘</td></tr></tbody></table></div>
+<h3 id="b-驱动装好之后的显示问题">B. 驱动装好之后的显示问题</h3>
+<div class="tw"><table><thead><tr><th>现象</th><th>原因</th><th>处理</th></tr></thead><tbody><tr><td>桌面正常显示约 1 分钟后黑屏，只剩光标</td><td>启动约 1 分钟后驱动切到「从显卡显存直接扫描输出」（<code>NVAccel::autoGo</code>）。如果桌面其实画在集成显卡上、或显卡的 BAR 只有 256 MB 小窗口，这个画面就是空的</td><td>1.14 已修（这类机器上驱动会保持拷贝路径）。旧版加 <code>-nvrmnoflip</code></td></tr><tr><td>100–240 Hz 下黑屏或闪烁，或改分辨率/刷新率后出现</td><td>超过 DisplayPort 1.4 带宽的高刷模式需要 DSC 压缩，而 macOS 没被告知</td><td>1.14 会下发压缩设置。仍复现就在故障发生时按 <strong>Send logs</strong>，应用会记录显示路径</td></tr><tr><td>macOS 26 (Tahoe) 下桌面全黑</td><td>包里 macOS 26 版的加速器（NVAccel）过期了</td><td>1.14 已修</td></tr><tr><td>显示器切到别的输入再切回来就没画面</td><td>驱动只点亮「没见过的新显示器」</td><td>1.14 已修。旧版把线拔了重插</td></tr><tr><td>无 Resizable BAR 的老 Intel 板上约 100 秒后黑屏，日志里是 <code>cannot hold … not placing</code></td><td>固件没有列出 64 位 PCI 地址范围，显卡的显存窗口无处安放</td><td>1.14 已修</td></tr><tr><td>显示器进入睡眠后，屏幕仍停留在最后一张画面上（不熄灭）</td><td>驱动没有关掉显示输出</td><td>1.14 已修</td></tr><tr><td>睡眠后屏幕黑掉、机器必须硬复位（<code>Sleep Wake Failure</code>、<code>Darkwake Exit Failure</code>）</td><td>驱动没有挂起/恢复 GPU，唤醒时把画面推到一块已经断电的卡上</td><td>新版已支持系统睡眠（见驱动仓库 <code>docs/SLEEP-WAKE.md</code>）。旧版先把系统睡眠关掉：<code>sudo pmset -a sleep 0</code>，也不要用苹果菜单里的「睡眠」</td></tr><tr><td>唤醒后桌面黑屏只剩光标，或停在睡前那张画面上</td><td>WindowServer 没被告知 framebuffer 已经唤醒，或它的显存被替换掉了</td><td>新版已修。仍复现就发日志，里面有 <code>NVRM-xnu: wake #</code> 和 <code>NVRM-fb: system wake</code></td></tr><tr><td>睡眠中大约每分钟自己醒一次（<code>pmset -g log</code> 里 <code>DarkWake ... due to XDCI ... XHCI</code>）</td><td>固件允许 USB 设备唤醒系统（GPE <code>0x6D</code>）。<strong>这不是驱动的问题</strong></td><td>用 <code>SSDT-GPRW</code> 在 <code>ACPI &gt; Patch</code> 里把 <code>GPRW</code> 重命名为 <code>XPRW</code>，之后只有电源键能唤醒</td></tr><tr><td>窗口变黑块或停留在旧画面，点一下才刷新；预览里图片显示成马赛克</td><td>图像内容在 GPU 画完之前就被标记成「已是最新」</td><td>1.14 已修（社区补丁）</td></tr><tr><td>浏览器报「Your browser does not support WebGL」</td><td>部分 WebGL 着色器翻译失败</td><td>1.14 已修</td></tr><tr><td>照片 App 人脸识别反复崩溃（<code>mediaanalysisd</code>）</td><td>驱动里有一个 Metal 对象被释放了两次</td><td>1.14 已修</td></tr><tr><td>登录界面出现那一刻内核 panic（WindowServer、<code>IOFramebuffer::postOpen</code>、<code>memcpy</code> 缺页），且装了 WhateverGreen</td><td>WhateverGreen 在第一次 framebuffer 启动时，会从它开机时记下的地址拷贝启动画面；而 macOS 可能已经把那段映射释放了</td><td>boot-args 加 <code>gfxrst=4</code> —— 它关掉这次拷贝，改由驱动自己画启动画面。<strong>本仓库已包含</strong></td></tr><tr><td>在 Turing（GTX 16 / RTX 20）上装完驱动后卡在 <code>AppleKeyStore</code> 循环</td><td>显卡固件需要更多时间，驱动才去点屏</td><td>1.13 起 Setup 会自动加 <code>nvrmsettle=10000</code>。手动装的自己加进 boot-args</td></tr></tbody></table></div>
+<h3 id="c-出问题了怎么退回去-最重要的一段">C. 出问题了怎么退回去（最重要的一段）</h3>
+<p>驱动出问题时可能连画面都没有，<strong>先记住这三条逃生路线</strong>，按严重程度递进：</p>
+<p><strong>1. 只想这一次不加载驱动</strong></p>
+<p>开机在 OpenCore 选单里选 <strong><code>1401: Start once without NVIDIA driver</code></strong>，按 <code>Y</code>，再选 macOS 或 Recovery。下次开机会自动恢复驱动。</p>
+<p><strong>2. 要彻底卸载驱动</strong></p>
+<p>选单里选 <strong><code>1401: Remove NVIDIA driver</code></strong>，按 <code>Y</code>，再选 macOS。它会自己卸载并重启，同时把保存的分辨率和刷新率恢复成安全默认值 —— 这样即使之前设过集成显卡显示不了的模式，也仍能看到画面。</p>
+<p><strong>3. 连选单和画面都看不见了</strong></p>
+<p>进 macOS Recovery（驱动在 Recovery 里不运行），打开「终端」执行：</p>
+<pre><code class="lang-bash">nvram 7C436110-AB2A-4BBB-A880-FE41995C9F82:nullmoth-remove=1</code></pre>
+<p>然后重启进 macOS。机器会自己把驱动卸掉再重启一次，<strong>全程不需要画面</strong>。效果与选单里的卸载项完全一致。</p>
+<h4 id="选单里看不到那两个-1401-条目">选单里看不到那两个 1401 条目？</h4>
+<p>官方说明：安装器会把选单切成 <strong><code>Builtin</code></strong>、并且不再把条目藏在空格键后面。</p>
+<p>本仓库的 <code>Misc &gt; Boot</code> 当前是：</p>
+<ul>
+<li><code>HideAuxiliary = false</code> ✅ 条目不需要按空格才出现</li>
+<li><code>PickerMode = External</code>（OpenCanopy 图形选单）⚠️ 与官方默认的 <code>Builtin</code> 不同</li>
+</ul>
+<p><strong>如果你的显示出了问题、而选单里又找不到那两个条目，会非常被动。</strong> 届时把 <code>PickerMode</code> 临时改成 <code>Builtin</code> 就能看到并选择它们，处理完再改回 <code>External</code>。这是本仓库相对官方默认配置唯一需要留意的地方。</p>
+<blockquote><p>另注：早期版本会往 OpenCore 里加一个 <code>NullMothLogo.efi</code> 启动项，现已废弃；新版安装/更新/卸载驱动时会自动移除它的条目和文件。<strong>若你的选单从来不出现</strong>，而 EFI 里还留着这个条目，就把它禁用掉。本仓库已不含任何 <code>NullMothLogo.efi</code> 条目。</p></blockquote>
+<h3 id="d-确认驱动到底有没有加载">D. 确认驱动到底有没有加载</h3>
+<p>重启后跑这两条：</p>
+<pre><code class="lang-bash">kmutil showloaded --list-only | grep nullmoth
+system_profiler SPDisplaysDataType | head -20</code></pre>
+<p>第一条应该输出 <strong>4 行</strong>，对应 <code>NVRM</code> / <code>NVAccel</code> / <code>NVRMFB</code> / <code>NVRMAGDC</code> 四个 kext。 第二条应该能看到你的 GeForce 显卡，并且 <strong>Metal: supported</strong>。</p>
+<p>只满足一半（kext 加载了但 Metal 不支持）通常意味着 <code>NVAccel</code> 没有为该 macOS 版本正确编译或安装。</p>
+<h3 id="e-拿日志">E. 拿日志</h3>
+<p>上面的表覆盖不到时，不要自己猜：</p>
+<ul>
+<li><strong>Mac 端</strong>：1401 → Crash report → <strong>Send logs</strong></li>
+<li><strong>Windows 端 1401</strong>：<strong>Scan for logs and send them</strong></li>
+</ul>
+<p>它会带上驱动状态（PCI 设备 ID、BAR 地址）、内核日志、插件日志、崩溃报告和 OpenCore 启动日志，并自动去掉机器名、序列号和内存地址，最后给一个 report ID。把 report ID 贴进 issue，比贴手机拍的屏幕清楚得多。</p>
+<hr>
+<h3 id="f-从-macos-15-升级到-26-后-开机出现-文件保险箱-正确密码也解不开">F. 从 macOS 15 升级到 26 后，开机出现「文件保险箱」，正确密码也解不开</h3>
+<p><strong>症状</strong>：升级完重启，macOS 启动前弹出一个解锁窗（文件保险箱 / FileVault），输入正确的账户密码提示密码错误，反复输也没用。</p>
+<p><strong>成因</strong>：macOS 26 的升级过程会把文件保险箱重新打开。开启之后，解锁发生在<strong>内核加载之前</strong>的预启动环境里 —— 这个界面由 Apple 自己的代码绘制，OpenCore 只负责递两样东西过去：APFS 驱动、键盘事件。所以密码校验完全在 Apple 手里，一旦 APFS 驱动和卷的加密元数据版本对不上，校验就会失败，表现和"输错密码"一模一样。</p>
+<p>原配置依赖 <code>UEFI &gt; APFS &gt; EnableJumpstart</code>，它的作用是从 APFS 容器里<strong>自动抽取</strong>内嵌的签名驱动。升级后容器里可能同时存在新旧两套 Preboot，一旦抽到旧驱动，就读不懂新卷的加密元数据。</p>
+<p><strong>处理</strong>（v1.0.1 已内置）：</p>
+<div class="tw"><table><thead><tr><th>项目</th><th>值</th></tr></thead><tbody><tr><td><code>OC/Drivers/apfs_aligned.efi</code></td><td>新增，718,340 字节，<code>sha256 1663fa54…</code></td></tr><tr><td><code>UEFI &gt; APFS &gt; EnableJumpstart</code></td><td><code>true</code> → <strong><code>false</code></strong></td></tr><tr><td><code>UEFI &gt; Drivers</code></td><td>新增 <code>apfs_aligned.efi</code> 条目，<code>Enabled=true</code>、<code>LoadEarly=false</code></td></tr></tbody></table></div>
+<p>关掉 Jumpstart 之后，APFS 驱动由固定文件提供，不再有"抽到哪个版本"的随机性。官方文档对该键的原文是 <em>Load embedded APFS drivers from APFS containers</em> —— 既然已有显式驱动，它就是冗余的。</p>
+<blockquote><p><code>MinVersion</code> / <code>MinDate</code> 只作用于 Jumpstart 加载的驱动，关掉后这两个键失效。</p></blockquote>
+<p><strong>改完第一次开机先确认一件事</strong>：OpenCore 选单里你的 macOS 卷还在。如果卷直接不见了，说明驱动没加载成功，立刻按 C 节回滚。</p>
+<p><strong>如果驱动正常、密码仍然解不开</strong>，问题就在卷的加密状态。进 Recovery（Recovery 分区不受文件保险箱保护，不需要密码），打开终端：</p>
+<pre><code class="lang-bash">diskutil apfs list                    # 看 Locked 状态，确认没有升级残留的旧卷
+diskutil apfs unlockVolume diskXsY    # 交互输密码，报错比图形界面明确
+diskutil apfs updatePreboot diskXsY   # 解锁成功后立刻执行，重建 Preboot</code></pre>
+<p><strong>能进系统之后</strong>，如果不需要文件保险箱，建议在「系统设置 → 隐私与安全性 → 文件保险箱」里关掉，免得下次大版本升级再踩一次。关之前先把数据备份好。</p>
+<hr>
+<h2 id="版权与归属">版权与归属</h2>
+<ul>
+<li><code>OpenCore.efi</code>、<code>OpenRuntime.efi</code>、<code>OpenCanopy.efi</code>、<code>ResetNvramEntry.efi</code>、<code>HfsPlus.efi</code> 来自 <a href="https://github.com/acidanthera/OpenCorePkg">Acidanthera OpenCore</a> 与 <a href="https://github.com/acidanthera/OcBinaryData">OcBinaryData</a>，遵循 BSD-3-Clause。</li>
+<li>各第三方 kext 版权归其作者所有，遵循各自的 LICENSE（Lilu / VirtualSMC / WhateverGreen / AppleALC / RestrictEvents / CPUFriend / NVMeFix 为 BSD-3；AirportItlwm / IntelBluetoothFirmware 为 GPL-2.0；USBToolBox 为 MIT）。</li>
+<li><code>IOSkywalkFamily.kext</code>、<code>IO80211FamilyLegacy.kext</code>、<code>AirPortBrcmNIC.kext</code> 是 <strong>Apple 原始二进制文件</strong>，版权归 Apple Inc. 所有，此处仅作互操作性研究用途。若权利人提出异议，将立即移除这些文件。</li>
+<li><strong>本仓库不包含</strong> <a href="https://github.com/nullmoth/nvidia-macos-driver">nullmoth/nvidia-macos-driver</a> 的任何文件。该项目的 kext 与插件以 <strong>PolyForm Noncommercial 1.0.0</strong> 授权（© NullMoth Systems），允许个人、研究、教育与非营利使用，<strong>禁止任何商业用途</strong>；其翻译器部分为 LGPL-3.0-or-later，NVK 部分为 Mesa 的 MIT 授权，GSP 固件遵循 NVIDIA 的可再分发固件许可。下载与安装请走<a href="https://github.com/nullmoth/nvidia-macos-driver/releases">官方 Releases</a>。</li>
+<li><code>config.plist</code> 与文档由本仓库维护者整理，可自由参考。</li>
+</ul>
+<h2 id="免责声明">免责声明</h2>
+<p>修改引导配置有风险，可能导致系统无法启动、数据丢失或硬件异常。使用前请备份重要数据。本仓库按「现状」提供，不附带任何担保，使用后果由使用者自行承担。</p>
+<h2 id="参考">参考</h2>
+<ul>
+<li><a href="https://github.com/acidanthera/OpenCorePkg/blob/master/Docs/Configuration.tex">OpenCorePkg 官方文档</a></li>
+<li><a href="https://github.com/nullmoth/nvidia-macos-driver"><strong>nullmoth/nvidia-macos-driver</strong></a> —— NVIDIA Metal 驱动本体（含 <code>docs/CARD-SUPPORT.md</code>、<code>docs/TROUBLESHOOTING.md</code>、<code>docs/SLEEP-WAKE.md</code>）</li>
+<li><a href="https://github.com/nullmoth/1401">nullmoth/1401</a> —— 配套安装器，可从 Windows 或 macOS 安装</li>
+<li><a href="https://dortania.github.io/OpenCore-Install-Guide/">Dortania OpenCore Install Guide</a></li>
+<li><a href="https://github.com/dortania/OpenCore-Legacy-Patcher">OpenCore Legacy Patcher</a></li>
+<li><a href="https://github.com/corpnewt/GenSMBIOS">GenSMBIOS</a></li>
+<li><a href="https://github.com/USBToolBox/tool">USBToolBox</a></li>
+</ul>
+<hr>
+<h2 id="关于本文档">关于本文档</h2>
+<p><strong>本安装说明由 AI 生成</strong>，仅供参考。</p>
+<p>文中内容取自 OpenCore 官方文档、<code>ocvalidate</code> 的实际输出、以及对本机 <code>config.plist</code> 的逐项比对。但硬件组合、驱动版本与系统行为都会随上游项目更新而变化 —— 动手前请核对各项目的官方文档并做好备份，不要仅凭本文操作。</p>
+    </article>
+
+    <article data-article="en" lang="en">
+<blockquote><p>OpenCore <strong>1.0.8</strong> boot configuration · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)<br>Verified with the official <code>ocvalidate</code> 1.0.8: <strong>No issues found.</strong></p></blockquote>
+<p>This is an OpenCore EFI that has been audited item by item. Every setting can be traced back to the official <code>Configuration.tex</code> — no mystery keys, no parameters copied from someone else's EFI without checking why they exist.</p>
+<hr>
+<h2 id="read-this-first">⚠️ Read this first</h2>
+<p><strong>The SMBIOS values in this repository are placeholders. It will not boot as-is.</strong></p>
+<pre><code class="lang-xml">&lt;string&gt;MLB-GOES-HERE&lt;/string&gt;
+&lt;string&gt;SERIAL-GOES-HERE&lt;/string&gt;
+&lt;string&gt;UUID-GOES-HERE&lt;/string&gt;
+&lt;data&gt;AAAAAAAA&lt;/data&gt;</code></pre>
+<p>Use <a href="https://github.com/corpnewt/GenSMBIOS">GenSMBIOS</a> to generate your own values for the model <strong>MacPro7,1</strong>, then put them into <code>EFI/OC/config.plist</code> under <code>PlatformInfo → Generic</code>:</p>
+<div class="tw"><table><thead><tr><th>Field</th><th>What to put there</th></tr></thead><tbody><tr><td><code>SystemProductName</code></td><td>leave as <code>MacPro7,1</code></td></tr><tr><td><code>SystemSerialNumber</code></td><td>the Serial generated by GenSMBIOS</td></tr><tr><td><code>MLB</code></td><td>the MLB generated by GenSMBIOS</td></tr><tr><td><code>SystemUUID</code></td><td>the SmUUID generated by GenSMBIOS</td></tr><tr><td><code>ROM</code></td><td>your NIC's MAC address (6 bytes); GenSMBIOS generates this for you</td></tr></tbody></table></div>
+<blockquote><p>Why not ship the author's real values: publishing a real set of identifiers lets anyone sign into iMessage / FaceTime with the same identity, which eventually gets the serial blacklisted by Apple. Nobody wins.</p></blockquote>
+<hr>
+<h2 id="hardware">Hardware</h2>
+<div class="tw"><table><thead><tr><th>Part</th><th>Model</th><th>Status</th></tr></thead><tbody><tr><td>Motherboard</td><td>ASUS TX GAMING B760M WIFI D4</td><td>✅</td></tr><tr><td>CPU</td><td>Intel Core i5-12400F (Alder Lake, 6P/12T)</td><td>✅ needs <code>CPUFriend</code></td></tr><tr><td>iGPU</td><td>none (the F suffix has no iGPU)</td><td>—</td></tr><tr><td>dGPU</td><td>NVIDIA GeForce RTX 4060 (Ada)</td><td>⚠️ third-party Metal driver, installed to <code>/Library/Extensions</code></td></tr><tr><td>Ethernet</td><td>Realtek RTL8125 2.5GbE</td><td>✅ <code>RTL812xLucy</code></td></tr><tr><td>Wi-Fi</td><td>Intel Wi-Fi 6 AX201</td><td>✅ <code>AirportItlwm</code> + OCLP-Mod</td></tr><tr><td>Bluetooth</td><td>Intel Bluetooth (built into AX201)</td><td>✅ <code>IntelBluetoothFirmware</code></td></tr><tr><td>Audio</td><td>Realtek ALC897</td><td>✅ <code>layout-id = 77</code></td></tr><tr><td>Storage</td><td>NVMe SSD</td><td>✅ <code>NVMeFix</code></td></tr></tbody></table></div>
+<hr>
+<h2 id="software-versions">Software versions</h2>
+<div class="tw"><table><thead><tr><th>Component</th><th>Version</th></tr></thead><tbody><tr><td>EFI version</td><td>v1.0.1 (2026-10-22)</td></tr><tr><td>OpenCore</td><td>1.0.8 (x64, PE Machine <code>0x8664</code>)</td></tr><tr><td>GPU driver</td><td><a href="https://github.com/nullmoth/nvidia-macos-driver">NullMoth nvidia-macos-driver</a> (Metal translation layer, Turing+)</td></tr><tr><td>Target OS</td><td>macOS 26 Tahoe (this config targets the <strong>Ventura build of <code>AirportItlwm</code></strong> plus the OCLP-Mod root patch)</td></tr><tr><td>Lilu</td><td>1.7.3</td></tr><tr><td>VirtualSMC</td><td>1.3.9 (with SMCProcessor / SMCSuperIO)</td></tr><tr><td>WhateverGreen</td><td>1.7.2</td></tr><tr><td>AppleALC</td><td>1.9.9</td></tr><tr><td>RestrictEvents</td><td>1.1.7</td></tr><tr><td>CPUFriend + DataProvider</td><td>1.3.1 / 1.0.1</td></tr><tr><td>NVMeFix</td><td>1.1.4</td></tr><tr><td>AMFIPass</td><td>1.4.1</td></tr><tr><td>AirportItlwm</td><td>2.3.0 (<strong>Ventura build</strong>)</td></tr><tr><td>IntelBluetoothFirmware / BTPatcher</td><td>2.5.0</td></tr><tr><td>BlueToolFixup</td><td>2.6.9</td></tr><tr><td>USBToolBox + UTBMap</td><td>1.2.0 / 1.1</td></tr><tr><td>RTL812xLucy</td><td>1.1.1</td></tr></tbody></table></div>
+<hr>
+<h2 id="directory-layout">Directory layout</h2>
+<pre><code>EFI/
+├── BOOT/
+│   └── BOOTx64.efi
+└── OC/
+    ├── ACPI/                 6 SSDTs
+    │   ├── SSDT-EC.aml               embedded controller (required)
+    │   ├── SSDT-PLUG-ALT.aml         CPU power management (required on 12th gen)
+    │   ├── SSDT-USBX.aml             USB power properties
+    │   ├── SSDT-USB-Reset.aml        USB reset
+    │   ├── SSDT-RTCAWAC.aml          RTC wake fix
+    │   └── SSDT-SBUS.aml             SBUS device
+    ├── Drivers/              5 UEFI drivers
+    │   ├── HfsPlus.efi               read HFS+ partitions
+    │   ├── apfs_aligned.efi          APFS driver (FileVault unlock)
+    │   ├── OpenRuntime.efi           runtime services (required)
+    │   ├── ResetNvramEntry.efi       "Reset NVRAM" entry in the boot menu
+    │   └── OpenCanopy.efi            graphical boot menu
+    ├── Kexts/                22 enabled kexts
+    ├── Resources/            GoldenGate theme (26 icons)
+    ├── Tools/                OpenShell.efi
+    └── config.plist</code></pre>
+<hr>
+<h2 id="installation">Installation</h2>
+<ol>
+<li><strong>Prepare a FAT32 USB stick of at least 200 MB</strong> (or use your ESP directly).</li>
+<li>Copy the whole <code>EFI/</code> folder from this repository to the root of the stick, so you end up with <code>USB/EFI/BOOT/BOOTx64.efi</code>.<blockquote><p>Copy the <code>EFI</code> level itself — do not end up with <code>EFI/EFI/BOOT</code>.</p></blockquote></li>
+<li><strong>Fill in your own SMBIOS values</strong> (see the warning at the top).</li>
+<li>BIOS settings:<ul>
+<li><code>Secure Boot</code> → <strong>Disabled</strong></li>
+<li><code>Fast Boot</code> → <strong>Disabled</strong></li>
+<li><code>VT-d</code> → Disabled (or leave it on and rely on <code>DisableIoMapper</code>)</li>
+<li><code>Above 4G Decoding</code> → <strong>Enabled</strong></li>
+<li><code>Re-Size BAR Support</code> → Enabled (works together with <code>ResizeGpuBars</code>)</li>
+<li><code>CFG-Lock</code> → Disabled (if the option does not exist, <code>AppleXcpmCfgLock</code> is already enabled as a fallback)</li>
+<li><code>SATA Mode</code> → AHCI</li>
+</ul></li>
+<li>Boot from the stick and go into the macOS installer.</li>
+</ol>
+<hr>
+<h2 id="configuration-notes-why-it-is-written-this-way">Configuration notes: why it is written this way</h2>
+<h3 id="1-securebootmodel-disabled-and-fixupappleefiimages">1. <code>SecureBootModel = Disabled</code> and <code>FixupAppleEfiImages</code></h3>
+<p>These two go together. You need both.</p>
+<p>What the official <code>Configuration.tex</code> says about <code>FixupAppleEfiImages</code>:</p>
+<blockquote><p>On a system with such a modern, stricter loader this quirk is required to load Mac OS X 10.4 to macOS 10.12, and <strong>is required for all newer macOS when <code>SecureBootModel</code> is set to <code>Disabled</code></strong>.</p></blockquote>
+<p>macOS's <code>boot.efi</code> carries a <code>W^X</code> permission bug that strict PE loaders refuse to load. This configuration needs <code>SecureBootModel = Disabled</code> in order to use the OCLP-Mod root patch, so <code>FixupAppleEfiImages</code> <strong>must</strong> be <code>true</code>.</p>
+<blockquote><p>Plenty of EFIs downloaded from elsewhere are missing this key (<code>ocvalidate</code> reports <code>Missing key</code>). Its failsafe value is <code>false</code>, so a missing key is the same as having it off — it boots fine most of the time and hangs the moment you hit a strict firmware.</p></blockquote>
+<h3 id="2-graphics-nullmoth-nvidia-driver">2. Graphics: NullMoth NVIDIA driver</h3>
+<p>NVIDIA does not provide drivers for recent macOS releases (the Web Driver era is long over). This machine uses<br><strong><a href="https://github.com/nullmoth/nvidia-macos-driver">nullmoth/nvidia-macos-driver</a></strong> — a third-party Metal driver that translates Apple Metal commands into Vulkan at runtime.</p>
+<pre><code>Metal App → NVMTLDriver.bundle → translator (AIR → SPIR-V) → NVK (Mesa Vulkan) → NVRM / NVAccel / NVRMFB → GPU</code></pre>
+<div class="tw"><table><thead><tr><th>Component</th><th>Installed to</th><th>Role</th></tr></thead><tbody><tr><td><code>NVMTLDriver.bundle</code></td><td><code>/Library/GPUBundles/</code></td><td>the Metal driver plug-in</td></tr><tr><td><code>libnvmtl_translate.dylib</code></td><td>inside the plug-in</td><td>shader translation (based on metal2vulkan, LGPL-3.0)</td></tr><tr><td><code>nvk/</code></td><td><code>/Library/GPUBundles/nvmtl/</code></td><td>Vulkan backend (Mesa + NAK compiler)</td></tr><tr><td><code>NVRM</code> <code>NVAccel</code> <code>NVRMFB</code> <code>NVRMAGDC</code></td><td><code>/Library/Extensions/</code></td><td>kernel extensions: driver core / accelerator / display framebuffer / display policy shim</td></tr><tr><td>GSP firmware</td><td><code>/Users/Shared/nvfw/nvidia/…</code></td><td>vendor firmware from NVIDIA</td></tr></tbody></table></div>
+<p><strong>Supported range</strong>: Turing and newer — GTX 16 series, RTX 20 / 30 / 40 / 50, TITAN RTX, Quadro RTX, T series.<br><strong>This machine has an Ada-based RTX 4060</strong>, which is covered by the official device table. The author tests mainly on an RTX 5060, so other models may have undiscovered issues.</p>
+<blockquote><p><strong>Key point: never inject these kexts through <code>EFI/OC/Kexts</code>.</strong><br>They load from the Auxiliary Kernel Collection; OpenCore's only job is to set SIP and boot-args.<br>That is why this repository's <code>config.plist</code> contains <strong>no NVIDIA-related entries at all</strong> — that is correct, not a missing configuration.</p></blockquote>
+<h4 id="what-the-driver-requires-from-opencore-checked-item-by-item-here">What the driver requires from OpenCore (checked item by item here)</h4>
+<div class="tw"><table><thead><tr><th>Requirement</th><th>This configuration</th><th>Result</th></tr></thead><tbody><tr><td>boot-args contain <code>nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0</code></td><td>all present</td><td>✅</td></tr><tr><td>No <code>nv_disable=1</code>, no <code>-wegnoegpu</code> (both hide the NVIDIA card)</td><td>neither present</td><td>✅</td></tr><tr><td><code>csr-active-config</code> includes the <code>0x0A43</code> bits</td><td><code>0x0FFF</code> (superset, includes them)</td><td>✅</td></tr><tr><td><code>Misc &gt; Security &gt; SecureBootModel</code> = <code>Disabled</code></td><td>Disabled</td><td>✅</td></tr><tr><td><code>Lilu.kext</code> and <code>AMFIPass.kext</code> in <code>Kernel &gt; Add</code> and enabled</td><td>both present</td><td>✅</td></tr><tr><td><code>Kernel &gt; Block</code> blocks <code>com.apple.iokit.IONDRVSupport</code></td><td>blocked</td><td>✅</td></tr><tr><td>No WhateverGreen NVIDIA patch for this card, no <code>agdpmod=pikera</code></td><td>neither present</td><td>✅</td></tr><tr><td>Keys written to NVRAM must also be listed in <code>NVRAM &gt; Delete</code></td><td><code>boot-args</code>, <code>csr-active-config</code> both listed</td><td>✅</td></tr><tr><td>The model must be accepted by this macOS version</td><td><code>MacPro7,1</code> — 1401 has picked it for desktops with a dGPU since 1.14; accepted by both macOS 15 and 26 (<code>iMacPro1,1</code> is rejected by macOS 26)</td><td>✅</td></tr><tr><td>BIOS: Above 4G Decoding ON, CSM OFF</td><td>see step 4 of "Installation" above</td><td>—</td></tr></tbody></table></div>
+<p><strong>Why <code>SecureBootModel</code> must be <code>Disabled</code></strong>: Apple Secure Boot refuses kexts that Apple has not signed, and the NVRM family loads unsigned.<br>This is also why <code>FixupAppleEfiImages</code> in §1 is <strong>mandatory</strong> here — the two are upstream and downstream of the same causal chain.</p>
+<h4 id="installing">Installing</h4>
+<p>Use the author's <strong>1401</strong> app (<a href="https://github.com/nullmoth/1401">nullmoth/1401</a>). It locates the OpenCore partition you boot from, backs up <code>config.plist</code>, writes the settings above, installs the driver, and adds a <strong>1401: Remove NVIDIA driver</strong> entry to the boot menu for one-click rollback.</p>
+<p>Installing manually means running <code>install.sh</code>, rebuilding the Auxiliary Kernel Collection, and getting the OpenCore configuration right by hand — get the order wrong and you get a black screen.</p>
+<blockquote><p>On the first boot with the driver, it can sit at <code>PCI configuration end</code> for up to about a minute while the GPU comes up. That is normal; do not assume it has hung.</p></blockquote>
+<h4 id="what-gfxrst-4-actually-does">What <code>gfxrst=4</code> actually does</h4>
+<p><strong>It is not a GPU reset.</strong> Per the official documentation: when WhateverGreen is installed, its boot-screen copy reads already-freed memory when the NVIDIA display is switched on, which panics. <code>gfxrst=4</code> suppresses that conflict.<br>So it has nothing to do with the GPU and everything to do with <strong>WhateverGreen</strong> — this machine keeps WEG for the Intel platform, so the flag is needed.</p>
+<h4 id="troubleshooting-boot-args-do-not-add-these-normally">Troubleshooting boot-args (do not add these normally)</h4>
+<div class="tw"><table><thead><tr><th>Flag</th><th>What it does</th></tr></thead><tbody><tr><td><code>-nvrmnoflip</code></td><td>disables zero-copy scanout; first thing to try for desktop flicker or tearing while moving the cursor</td></tr><tr><td><code>-nvrmnopm</code></td><td>disables system sleep support; the symptom is "the GPU never comes back after sleep"</td></tr><tr><td><code>-nvrmnogo</code></td><td>the driver does not start on its own; wait for a manual <code>nvrmctl go</code></td></tr><tr><td><code>-nvrmnobootscreen</code></td><td>does not capture the boot screen</td></tr></tbody></table></div>
+<h3 id="3-the-three-kernel-block-entries">3. The three <code>Kernel &gt; Block</code> entries</h3>
+<div class="tw"><table><thead><tr><th>Blocked kext</th><th>Why</th></tr></thead><tbody><tr><td><code>com.apple.iokit.IOSkywalkFamily</code></td><td>replaced by the patched build in this repo; without the block the stock version loads first and the Intel NIC never comes up</td></tr><tr><td><code>com.apple.driver.AppleEthernetRL</code></td><td>the stock RTL driver conflicts with <code>RTL812xLucy</code> on this machine</td></tr><tr><td><code>com.apple.iokit.IONDRVSupport</code></td><td>without the block, the firmware's own framebuffer takes display index 0 away from <code>NVRMFB</code> and the NVIDIA output never lights up</td></tr></tbody></table></div>
+<h3 id="4-the-three-stage-wi-fi-dependency">4. The three-stage Wi-Fi dependency</h3>
+<p>On macOS 14+ an Intel card is <strong>not</strong> just a matter of dropping in <code>AirportItlwm</code>:</p>
+<pre><code>IOSkywalkFamily.kext            ← base of the NIC protocol stack (Apple original, needs blocking the stock kext)
+IO80211FamilyLegacy.kext        ← the older 802.11 framework
+└── AirPortBrcmNIC.kext         ← its plug-in; "Brcm" in the name, but Intel cards mount through it too
+AirportItlwm-Ventura.kext       ← the actual Intel driver (Ventura build)</code></pre>
+<blockquote><p>These three Apple originals are not "Broadcom-only, pointless on an Intel machine". Anyone saying so has it wrong.</p>
+<p>Why the <strong>Ventura build</strong> of AirportItlwm: the community approach on Tahoe is the Ventura build plus the OCLP-Mod root patch; the Sequoia build does not work on Tahoe.</p></blockquote>
+<h3 id="5-boot-args-one-by-one">5. boot-args, one by one</h3>
+<pre><code>keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0
+nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4</code></pre>
+<div class="tw"><table><thead><tr><th>Flag</th><th>What it does</th></tr></thead><tbody><tr><td><code>keepsyms=1</code></td><td>keeps function symbols in kernel panics; without it panic logs are bare addresses. <strong>Do not remove</strong></td></tr><tr><td><code>amfi_get_out_of_my_way=0x1</code> <code>amfi=0x80</code></td><td>disables AMFI validation, together with <code>AMFIPass</code> + the root patch</td></tr><tr><td><code>ipc_control_port_options=0</code></td><td>fixes XPC communication for some apps</td></tr><tr><td><code>nvfb=1</code> <code>nvaccel=1</code> <code>nvfbheads=4</code></td><td>required by the NullMoth driver: enable framebuffer, enable NVAccel acceleration, 4 display heads</td></tr><tr><td><code>-nvkmsnosmooth</code></td><td>also required by the driver: disables nvkms smooth scaling</td></tr><tr><td><code>-lilubetaall</code></td><td>lets Lilu and its plug-ins load on newer OS versions</td></tr><tr><td><code>gfxrst=4</code></td><td>required with WhateverGreen: otherwise WEG's boot-screen copy reads freed memory when the NVIDIA display comes up, straight to a panic</td></tr></tbody></table></div>
+<h3 id="6-logging-is-off">6. Logging is off</h3>
+<p><code>Misc &gt; Debug &gt; Target</code> is set to <strong>0</strong>. Per the official definition, bit <code>0x01</code> is the master switch; with it off "all log is discarded" and no <code>opencore-*.txt</code> appears in the ESP root. <code>AppleDebug</code>, <code>ApplePanic</code> and <code>DisableWatchDog</code> are also <code>false</code>.</p>
+<p>When you need logs for troubleshooting:</p>
+<pre><code class="lang-xml">&lt;key&gt;Target&lt;/key&gt;&lt;integer&gt;67&lt;/integer&gt;
+&lt;key&gt;AppleDebug&lt;/key&gt;&lt;true/&gt;
+&lt;key&gt;ApplePanic&lt;/key&gt;&lt;true/&gt;</code></pre>
+<p>Then add <code>debug=0x100</code> back at the front of boot-args.</p>
+<h3 id="7-other-important-keys">7. Other important keys</h3>
+<div class="tw"><table><thead><tr><th>Key</th><th>Value</th><th>Note</th></tr></thead><tbody><tr><td><code>Misc &gt; Security &gt; ScanPolicy</code></td><td><code>0</code></td><td>do not restrict scanning; boot from any partition</td></tr><tr><td><code>Misc &gt; Security &gt; Vault</code></td><td><code>Optional</code></td><td>no vault validation</td></tr><tr><td><code>csr-active-config</code></td><td><code>0x0FFF</code></td><td>SIP essentially off, needed by the root patch</td></tr><tr><td><code>DeviceProperties</code></td><td><code>layout-id = 77</code></td><td>a working layout for ALC897</td></tr><tr><td><code>PlatformInfo &gt; UpdateSMBIOSMode</code></td><td><code>Custom</code></td><td>pairs with <code>SpoofVendor = true</code></td></tr><tr><td><code>UEFI &gt; Output &gt; Resolution</code></td><td><code>Max</code></td><td>use the monitor's native resolution</td></tr><tr><td><code>Misc &gt; Boot &gt; PickerVariant</code></td><td><code>Acidanthera\GoldenGate</code></td><td>graphical boot menu theme</td></tr></tbody></table></div>
+<hr>
+<h2 id="what-has-been-fixed-on-this-machine">What has been fixed on this machine</h2>
+<p>This EFI has been fully audited; the following issues were fixed (see the commit history):</p>
+<div class="tw"><table><thead><tr><th>Issue</th><th>Fix</th></tr></thead><tbody><tr><td><code>SSDT-USBX.aml</code> was <code>Enabled=true</code> but the file did not exist</td><td>file restored; USB power properties are injected again</td></tr><tr><td><code>FixupAppleEfiImages</code> missing (required when <code>SecureBootModel=Disabled</code>)</td><td>set to <code>true</code></td></tr><tr><td>15 missing schema keys, <code>ocvalidate</code> reported 16 items</td><td>all filled in, validation now clean</td></tr><tr><td><code>Misc &gt; Debug</code> had file logging on (<code>Target=67</code>)</td><td>turned off</td></tr><tr><td>one unreferenced orphan kext (15.4 MB)</td><td>removed from the repository</td></tr><tr><td>after upgrading to macOS 26, FileVault appears at boot and even the correct password is rejected</td><td>switched to an explicit <code>apfs_aligned.efi</code>, <code>EnableJumpstart</code> turned off</td></tr></tbody></table></div>
+<hr>
+<h2 id="known-limitations">Known limitations</h2>
+<ul>
+<li><strong>The GPU driver is a third-party reverse-engineering effort.</strong> Its kexts live in <code>/Library/Extensions</code> and load from the Auxiliary Kernel Collection; every macOS major release may require waiting for the driver to catch up. Before upgrading, check the <a href="https://github.com/nullmoth/nvidia-macos-driver/releases">releases</a> and <code>CHANGELOG</code>.</li>
+<li><strong>Only Turing and newer GPUs are supported.</strong> Older cards such as Pascal and Maxwell are out of scope.</li>
+<li><strong>Wi-Fi needs the root patch.</strong> Same story: once <code>AirportItlwm</code> is installed to <code>/Library/Extensions</code> it depends on the OCLP-Mod patch chain.</li>
+<li><strong>The <code>i5-12400F</code> has no iGPU</strong>, so Sidecar hardware encoding is unavailable, and there is no GUI at all without the dGPU.</li>
+<li><strong>Porting to another motherboard is not guaranteed.</strong> <code>SSDT-RTCAWAC</code> and <code>SSDT-SBUS</code> in the ACPI folder were generated for this board specifically; regenerate them for a different one.</li>
+<li><strong>Back up your EFI before any macOS major upgrade</strong>, and confirm the kexts have caught up.</li>
+</ul>
+<hr>
+<h2 id="common-installation-problems">Common installation problems</h2>
+<blockquote><p>The first rule is always: <strong>use the latest 1401 and the latest driver</strong>. Many of the problems below were fixed in later versions, and a USB stick made with an older 1401 keeps its old problems until you rebuild it.</p></blockquote>
+<h3 id="a-stuck-in-the-picker-cannot-reach-macos-yet">A. Stuck in the picker / cannot reach macOS yet</h3>
+<div class="tw"><table><thead><tr><th>Symptom</th><th>Cause</th><th>What to do</th></tr></thead><tbody><tr><td>Hangs at <code>PCI configuration</code></td><td>usually Resizable BAR or Above 4G Decoding settings</td><td>Enable Above 4G Decoding and disable CSM in BIOS. If it still hangs, export the stick's log</td></tr><tr><td><code>EB.MM.AKM</code>, <code>STOP 0x16</code>, <code>StartImage failed - Aborted</code>, <code>Couldn't allocate runtime area</code></td><td>the firmware memory map leaves no room for <code>boot.efi</code> (common on Ryzen 7000/9000)</td><td>rebuild the stick with the latest 1401 — it applies the right memory settings and falls through a list of them automatically. Rebooting the old stick will not help</td></tr><tr><td>Hangs at <code>EXITBS:START</code></td><td>macOS has taken over from the firmware but stops before printing anything. On Intel 12th gen and newer, and on AMD laptops, usually a CPU core layout or memory map problem</td><td>start with the latest 1401; then export the stick's <code>opencore-*.txt</code>; if there is a panic, photograph the whole screen in verbose mode</td></tr><tr><td><code>This version of Mac OS X is not supported on this platform!</code> followed by <code>Mac-…</code> codes</td><td>the configured model is not accepted by this macOS version. <strong>macOS 26 rejects <code>iMacPro1,1</code></strong>; macOS 15 rejects a batch of older models</td><td>use <code>MacPro7,1</code> — 1401 has picked it for desktops with a dGPU since 1.14, and both macOS 15 and 26 accept it. <strong>This repository ships <code>MacPro7,1</code></strong></td></tr><tr><td>The installer freezes completely at around 19 minutes (even Caps Lock is dead), Ryzen 7000/8000/9000</td><td>these boards hang while the installer writes firmware settings</td><td>rebuild the stick (fixed in 1.14). If you maintain your own EFI, set <code>Booter &gt; Quirks &gt; DisableVariableWrite = true</code></td></tr><tr><td><code>OCB: LoadImage failed - Unsupported</code>, <code>Failed to retrieve boot file from DMG</code></td><td>the recovery image on the stick is corrupt</td><td>use a different stick (1.14 reads back and verifies after writing)</td></tr><tr><td><code>OS.dmg.root_hash … Err(0xE)</code></td><td>stick made with an old 1401, or the recovery image does not match the target macOS version</td><td>rebuild with the latest 1401</td></tr><tr><td>Occasionally hangs after picking the stick, then works when rebuilt</td><td>the stick or port is too slow / unstable while reading that ~900 MB recovery image</td><td>use a rear USB port, or a different stick</td></tr></tbody></table></div>
+<h3 id="b-display-problems-after-the-driver-is-installed">B. Display problems after the driver is installed</h3>
+<div class="tw"><table><thead><tr><th>Symptom</th><th>Cause</th><th>What to do</th></tr></thead><tbody><tr><td>Desktop looks fine for about a minute, then goes black with only the cursor</td><td>about a minute after boot the driver switches to "scan out directly from VRAM" (<code>NVAccel::autoGo</code>). If the desktop is actually drawn on the iGPU, or the card's BAR is only a small 256 MB window, that surface is blank</td><td>fixed in 1.14 (the driver keeps the copy path on such machines). On older versions add <code>-nvrmnoflip</code></td></tr><tr><td>Black screen or flicker at 100–240 Hz, or after changing resolution / refresh rate</td><td>high-refresh modes beyond DisplayPort 1.4 bandwidth need DSC compression, and macOS was never told</td><td>1.14 sends the compression settings. If it still happens, hit <strong>Send logs</strong> while the fault is visible; the app records the display path</td></tr><tr><td>Completely black desktop on macOS 26 (Tahoe)</td><td>the accelerator (NVAccel) bundled for macOS 26 was outdated</td><td>fixed in 1.14</td></tr><tr><td>No picture after switching the monitor to another input and back</td><td>the driver only lights up "displays it has not seen before"</td><td>fixed in 1.14. On older versions unplug and replug the cable</td></tr><tr><td>Black screen after ~100 seconds on older Intel boards without Resizable BAR, log says <code>cannot hold … not placing</code></td><td>the firmware does not list a 64-bit PCI address range, so there is nowhere to put the card's VRAM window</td><td>fixed in 1.14</td></tr><tr><td>After the display sleeps, the screen stays on the last frame (never turns off)</td><td>the driver does not turn off the display output</td><td>fixed in 1.14</td></tr><tr><td>Screen goes black after sleep and the machine needs a hard reset (<code>Sleep Wake Failure</code>, <code>Darkwake Exit Failure</code>)</td><td>the driver did not suspend / resume the GPU and pushes the picture to a powered-down card on wake</td><td>newer builds support system sleep (see <code>docs/SLEEP-WAKE.md</code> in the driver repo). On older versions disable system sleep first: <code>sudo pmset -a sleep 0</code>, and avoid "Sleep" in the Apple menu</td></tr><tr><td>After wake the desktop is black with only the cursor, or stuck on the pre-sleep frame</td><td>WindowServer was not told the framebuffer woke up, or its VRAM was replaced</td><td>fixed in newer builds. If it still happens, send logs — they contain <code>NVRM-xnu: wake #</code> and <code>NVRM-fb: system wake</code></td></tr><tr><td>Wakes by itself roughly once a minute during sleep (<code>pmset -g log</code> shows <code>DarkWake ... due to XDCI ... XHCI</code>)</td><td>the firmware allows USB devices to wake the system (GPE <code>0x6D</code>). <strong>This is not a driver problem</strong></td><td>add <code>SSDT-GPRW</code> and rename <code>GPRW</code> to <code>XPRW</code> in <code>ACPI &gt; Patch</code>; then only the power button wakes the machine</td></tr><tr><td>Windows turn into black blocks or keep an old frame until clicked; images look mosaic in Preview</td><td>image content is marked "up to date" before the GPU finishes drawing it</td><td>fixed in 1.14 (community patch)</td></tr><tr><td>Browser says "Your browser does not support WebGL"</td><td>some WebGL shader translations fail</td><td>fixed in 1.14</td></tr><tr><td>Photos app face recognition crashes repeatedly (<code>mediaanalysisd</code>)</td><td>a Metal object is released twice in the driver</td><td>fixed in 1.14</td></tr><tr><td>Kernel panic the moment the login window appears (WindowServer, <code>IOFramebuffer::postOpen</code>, <code>memcpy</code> page fault), with WhateverGreen installed</td><td>on the first framebuffer start, WhateverGreen copies the boot screen from an address it recorded at boot; macOS may already have unmapped it</td><td>add <code>gfxrst=4</code> to boot-args — it disables that copy and lets the driver draw the boot screen itself. <strong>Already included here</strong></td></tr><tr><td>On Turing (GTX 16 / RTX 20) it hangs in an <code>AppleKeyStore</code> loop right after installing the driver</td><td>the GPU firmware needs more time before the driver lights up the display</td><td>since 1.13 Setup adds <code>nvrmsettle=10000</code> automatically. Manual installs: add it to boot-args yourself</td></tr></tbody></table></div>
+<h3 id="c-how-to-roll-back-when-something-breaks-the-most-important-section">C. How to roll back when something breaks (the most important section)</h3>
+<p>A bad driver can leave you with no picture at all. <strong>Remember these three escape routes</strong>, in order of severity:</p>
+<p><strong>1. Skip the driver for this one boot</strong></p>
+<p>In the OpenCore picker choose <strong><code>1401: Start once without NVIDIA driver</code></strong>, press <code>Y</code>, then pick macOS or Recovery. The next boot restores the driver automatically.</p>
+<p><strong>2. Remove the driver completely</strong></p>
+<p>Choose <strong><code>1401: Remove NVIDIA driver</code></strong>, press <code>Y</code>, then pick macOS. It uninstalls and reboots by itself, and resets the saved resolution and refresh rate to safe defaults — so even if you had set a mode the display cannot show, you still get a picture.</p>
+<p><strong>3. You cannot even see the picker</strong></p>
+<p>Boot into macOS Recovery (the driver does not run there), open Terminal and run:</p>
+<pre><code class="lang-bash">nvram 7C436110-AB2A-4BBB-A880-FE41995C9F82:nullmoth-remove=1</code></pre>
+<p>Then reboot into macOS. The machine removes the driver itself and reboots once more, <strong>with no display needed at any point</strong>. The effect is identical to the uninstall entry in the picker.</p>
+<h4 id="cannot-find-those-two-1401-entries-in-the-picker">Cannot find those two 1401 entries in the picker?</h4>
+<p>Per the official documentation, the installer switches the picker to <strong><code>Builtin</code></strong> and stops hiding the entries behind the space bar.</p>
+<p>This repository's <code>Misc &gt; Boot</code> currently is:</p>
+<ul>
+<li><code>HideAuxiliary = false</code> ✅ entries do not require pressing space</li>
+<li><code>PickerMode = External</code> (OpenCanopy graphical picker) ⚠️ differs from the official default of <code>Builtin</code></li>
+</ul>
+<p><strong>If your display is broken and you cannot find those two entries, you are in a bad spot.</strong> In that case temporarily change <code>PickerMode</code> to <code>Builtin</code> so you can see and select them, then change it back to <code>External</code> afterwards. This is the only place this repository deviates from the official default configuration.</p>
+<blockquote><p>Also note: early versions added a <code>NullMothLogo.efi</code> boot entry to OpenCore; that is deprecated, and newer installers/updaters/uninstallers remove its entry and file automatically. <strong>If your picker never appears</strong> while that entry is still in the EFI, disable it. This repository contains no <code>NullMothLogo.efi</code> entry at all.</p></blockquote>
+<h3 id="d-verify-whether-the-driver-actually-loaded">D. Verify whether the driver actually loaded</h3>
+<p>After rebooting run these two commands:</p>
+<pre><code class="lang-bash">kmutil showloaded --list-only | grep nullmoth
+system_profiler SPDisplaysDataType | head -20</code></pre>
+<p>The first should print <strong>4 lines</strong>, for the <code>NVRM</code> / <code>NVAccel</code> / <code>NVRMFB</code> / <code>NVRMAGDC</code> kexts.<br>The second should show your GeForce card with <strong>Metal: supported</strong>.</p>
+<p>Only half of that (kexts loaded but no Metal) usually means <code>NVAccel</code> was not correctly built or installed for that macOS version.</p>
+<h3 id="e-getting-logs">E. Getting logs</h3>
+<p>When the tables above do not cover it, do not guess:</p>
+<ul>
+<li><strong>On the Mac</strong>: 1401 → Crash report → <strong>Send logs</strong></li>
+<li><strong>1401 on Windows</strong>: <strong>Scan for logs and send them</strong></li>
+</ul>
+<p>It collects driver state (PCI device IDs, BAR addresses), kernel logs, plug-in logs, crash reports and the OpenCore boot log, strips machine names, serial numbers and memory addresses, and gives you a report ID. Paste that report ID into an issue — far more useful than a photo of the screen.</p>
+<hr>
+<h3 id="f-after-upgrading-from-macos-15-to-26-filevault-appears-at-boot-and-even-the-correct-password-is-rejected">F. After upgrading from macOS 15 to 26, FileVault appears at boot and even the correct password is rejected</h3>
+<p><strong>Symptom</strong>: after the upgrade, a password window (FileVault) appears before macOS starts. Entering the correct account password reports a wrong password, and repeated attempts do not help.</p>
+<p><strong>Cause</strong>: the macOS 26 upgrade turns FileVault back on. Once enabled, unlocking happens in the pre-boot environment <strong>before the kernel loads</strong> — that screen is drawn by Apple's own code; OpenCore only hands over two things: the APFS driver and keyboard events. So the password check is entirely Apple's, and if the APFS driver does not understand the volume's encryption metadata version, the check fails and looks exactly like "wrong password".</p>
+<p>The original configuration relied on <code>UEFI &gt; APFS &gt; EnableJumpstart</code>, which <strong>automatically extracts</strong> the embedded signed driver from the APFS container. After an upgrade the container may hold both an old and a new Preboot; if the old driver gets picked, it cannot read the new volume's encryption metadata.</p>
+<p><strong>Fix</strong> (included since v1.0.1):</p>
+<div class="tw"><table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody><tr><td><code>OC/Drivers/apfs_aligned.efi</code></td><td>added, 718,340 bytes, <code>sha256 1663fa54…</code></td></tr><tr><td><code>UEFI &gt; APFS &gt; EnableJumpstart</code></td><td><code>true</code> → <strong><code>false</code></strong></td></tr><tr><td><code>UEFI &gt; Drivers</code></td><td>new <code>apfs_aligned.efi</code> entry, <code>Enabled=true</code>, <code>LoadEarly=false</code></td></tr></tbody></table></div>
+<p>With Jumpstart off, the APFS driver comes from a fixed file, so there is no more randomness about which version gets picked. The official documentation describes the key as <em>Load embedded APFS drivers from APFS containers</em> — given an explicit driver, it is redundant.</p>
+<blockquote><p><code>MinVersion</code> / <code>MinDate</code> only apply to drivers loaded by Jumpstart, so both keys stop having any effect once it is off.</p></blockquote>
+<p><strong>Check one thing on the first boot after the change</strong>: your macOS volume is still in the OpenCore picker. If the volume is simply gone, the driver failed to load — roll back per section C immediately.</p>
+<p><strong>If the driver is fine and the password still does not work</strong>, the problem is the volume's encryption state. Boot into Recovery (the Recovery partition is not protected by FileVault, so no password is needed) and open Terminal:</p>
+<pre><code class="lang-bash">diskutil apfs list                    # check Locked state, confirm there is no leftover volume from the upgrade
+diskutil apfs unlockVolume diskXsY    # interactive passphrase prompt; errors are clearer than the GUI
+diskutil apfs updatePreboot diskXsY   # run right after a successful unlock to rebuild Preboot</code></pre>
+<p><strong>Once you can boot into macOS</strong>, if you do not need FileVault, turn it off in System Settings → Privacy &amp; Security → FileVault so the next major upgrade does not hit this again. Back up your data before turning it off.</p>
+<hr>
+<h2 id="copyright-and-attribution">Copyright and attribution</h2>
+<ul>
+<li><code>OpenCore.efi</code>, <code>OpenRuntime.efi</code>, <code>OpenCanopy.efi</code>, <code>ResetNvramEntry.efi</code> and <code>HfsPlus.efi</code> come from <a href="https://github.com/acidanthera/OpenCorePkg">Acidanthera OpenCore</a> and <a href="https://github.com/acidanthera/OcBinaryData">OcBinaryData</a>, under BSD-3-Clause.</li>
+<li>All third-party kexts are copyright their respective authors and follow their own licenses (Lilu / VirtualSMC / WhateverGreen / AppleALC / RestrictEvents / CPUFriend / NVMeFix are BSD-3; AirportItlwm / IntelBluetoothFirmware are GPL-2.0; USBToolBox is MIT).</li>
+<li><code>IOSkywalkFamily.kext</code>, <code>IO80211FamilyLegacy.kext</code> and <code>AirPortBrcmNIC.kext</code> are <strong>original Apple binaries</strong>, copyright Apple Inc., included solely for interoperability research. They will be removed immediately if the rights holder objects.</li>
+<li><strong>This repository contains no files from</strong> <a href="https://github.com/nullmoth/nvidia-macos-driver">nullmoth/nvidia-macos-driver</a>. That project's kexts and plug-ins are licensed under <strong>PolyForm Noncommercial 1.0.0</strong> (© NullMoth Systems), which permits personal, research, educational and non-profit use and <strong>forbids any commercial use</strong>; its translator is LGPL-3.0-or-later, the NVK part is Mesa's MIT license, and the GSP firmware follows NVIDIA's redistributable firmware license. Download and install it from the <a href="https://github.com/nullmoth/nvidia-macos-driver/releases">official releases</a>.</li>
+<li><code>config.plist</code> and the documentation were assembled by this repository's maintainer; feel free to use them as a reference.</li>
+</ul>
+<h2 id="disclaimer">Disclaimer</h2>
+<p>Changing boot configuration is risky: it can leave the system unbootable, cause data loss or hardware misbehaviour. Back up important data first. This repository is provided "as is", without any warranty; you are responsible for the consequences of using it.</p>
+<h2 id="references">References</h2>
+<ul>
+<li><a href="https://github.com/acidanthera/OpenCorePkg/blob/master/Docs/Configuration.tex">OpenCorePkg official documentation</a></li>
+<li><a href="https://github.com/nullmoth/nvidia-macos-driver"><strong>nullmoth/nvidia-macos-driver</strong></a> — the NVIDIA Metal driver itself (including <code>docs/CARD-SUPPORT.md</code>, <code>docs/TROUBLESHOOTING.md</code>, <code>docs/SLEEP-WAKE.md</code>)</li>
+<li><a href="https://github.com/nullmoth/1401">nullmoth/1401</a> — the companion installer, runnable from Windows or macOS</li>
+<li><a href="https://dortania.github.io/OpenCore-Install-Guide/">Dortania OpenCore Install Guide</a></li>
+<li><a href="https://github.com/dortania/OpenCore-Legacy-Patcher">OpenCore Legacy Patcher</a></li>
+<li><a href="https://github.com/corpnewt/GenSMBIOS">GenSMBIOS</a></li>
+<li><a href="https://github.com/USBToolBox/tool">USBToolBox</a></li>
+</ul>
+<hr>
+<h2 id="about-this-document">About this document</h2>
+<p><strong>This installation guide was generated by AI</strong> and is for reference only.</p>
+<p>Its content is drawn from the official OpenCore documentation, actual <code>ocvalidate</code> output, and an item-by-item comparison against this machine's <code>config.plist</code>. Hardware combinations, driver versions and system behaviour all change as upstream projects evolve — check each project's official documentation and keep a backup before you start, and do not act on this document alone.</p>
+    </article>
+  </main>
+</div>
+
+<footer>
+  <p data-article="zh">本说明由 AI 生成，仅供参考 —— 动手前请核对各上游项目的官方文档并做好备份。</p>
+  <p data-article="en">This documentation was generated by AI and is for reference only — verify against each upstream project's official docs and keep a backup.</p>
+  <p><a href="https://github.com/nanosan0/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi">B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi</a> · MIT-style reference use · 三码需自行生成 / generate your own SMBIOS values</p>
+</footer>
+
+<script>
+(function () {
+  var KEY = 'efi-doc-lang';
+  var root = document.documentElement;
+  var btns = document.querySelectorAll('[data-lang-btn]');
+
+  function apply(lang) {
+    root.setAttribute('data-lang', lang);
+    root.setAttribute('lang', lang === 'zh' ? 'zh-CN' : 'en');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', String(btns[i].dataset.langBtn === lang));
+    }
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  var q = /[?&]lang=(zh|en)(&|$)/.exec(location.search);   // 可分享的 ?lang=en
+  apply(q ? q[1] : (saved === 'en' ? 'en' : 'zh'));     // 默认中文
+
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function (e) {
+      var lang = e.currentTarget.dataset.langBtn;
+      apply(lang);
+      try { localStorage.setItem(KEY, lang); } catch (err) {}
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  if (window.matchMedia('(max-width: 900px)').matches) {
+    var tocs = document.querySelectorAll('.toc');
+    for (var k = 0; k < tocs.length; k++) {
+      (function (toc) {
+        var btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = '目录 / Contents';
+        btn.style.marginBottom = '16px';
+        btn.addEventListener('click', function () { toc.classList.toggle('open'); });
+        toc.parentNode.insertBefore(btn, toc);
+      })(tocs[k]);
+    }
+  }
+})();
+</script>
+</body>
+</html>
