@@ -54,6 +54,7 @@
 
 | 组件                                 | 版本                                                                                                 |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| EFI 版本                             | v1.0.1（2026-10-22）                                                                                 |
 | OpenCore                           | 1.0.8（x64，PE Machine `0x8664`）                                                                     |
 | 显卡驱动                               | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver)（Metal 翻译层，Turing+） |
 | 目标系统                               | macOS 26 Tahoe（本配置按 **Ventura 版 `AirportItlwm`** + OCLP-Mod 根补丁适配）                                 |
@@ -87,8 +88,9 @@ EFI/
     │   ├── SSDT-USB-Reset.aml        USB 复位
     │   ├── SSDT-RTCAWAC.aml          RTC 唤醒修复
     │   └── SSDT-SBUS.aml             SBUS 设备
-    ├── Drivers/              4 个 UEFI 驱动
+    ├── Drivers/              5 个 UEFI 驱动
     │   ├── HfsPlus.efi               读 HFS+ 分区
+    │   ├── apfs_aligned.efi          APFS 驱动（文件保险箱解锁）
     │   ├── OpenRuntime.efi           运行时服务（必须）
     │   ├── ResetNvramEntry.efi       开机菜单里的重置 NVRAM 项
     │   └── OpenCanopy.efi            图形化启动菜单
@@ -275,6 +277,7 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | 15 处 schema 缺键，`ocvalidate` 报 16 项                         | 全部补齐，校验清零         |
 | `Misc > Debug` 开着文件日志（`Target=67`）                         | 关闭                |
 | 一个未被引用的孤儿 kext（15.4 MB）                                    | 从仓库剔除             |
+| 升级 macOS 26 后开机弹文件保险箱，正确密码也无法解锁                          | 换用显式 `apfs_aligned.efi`，关闭 `EnableJumpstart` |
 
 ---
 
@@ -382,6 +385,41 @@ system_profiler SPDisplaysDataType | head -20
 - **Windows 端 1401**：**Scan for logs and send them**
 
 它会带上驱动状态（PCI 设备 ID、BAR 地址）、内核日志、插件日志、崩溃报告和 OpenCore 启动日志，并自动去掉机器名、序列号和内存地址，最后给一个 report ID。把 report ID 贴进 issue，比贴手机拍的屏幕清楚得多。
+
+---
+
+
+### F. 从 macOS 15 升级到 26 后，开机出现「文件保险箱」，正确密码也解不开
+
+**症状**：升级完重启，macOS 启动前弹出一个解锁窗（文件保险箱 / FileVault），输入正确的账户密码提示密码错误，反复输也没用。
+
+**成因**：macOS 26 的升级过程会把文件保险箱重新打开。开启之后，解锁发生在**内核加载之前**的预启动环境里 —— 这个界面由 Apple 自己的代码绘制，OpenCore 只负责递两样东西过去：APFS 驱动、键盘事件。所以密码校验完全在 Apple 手里，一旦 APFS 驱动和卷的加密元数据版本对不上，校验就会失败，表现和"输错密码"一模一样。
+
+原配置依赖 `UEFI > APFS > EnableJumpstart`，它的作用是从 APFS 容器里**自动抽取**内嵌的签名驱动。升级后容器里可能同时存在新旧两套 Preboot，一旦抽到旧驱动，就读不懂新卷的加密元数据。
+
+**处理**（v1.0.1 已内置）：
+
+| 项目 | 值 |
+| --- | --- |
+| `OC/Drivers/apfs_aligned.efi` | 新增，718,340 字节，`sha256 1663fa54…` |
+| `UEFI > APFS > EnableJumpstart` | `true` → **`false`** |
+| `UEFI > Drivers` | 新增 `apfs_aligned.efi` 条目，`Enabled=true`、`LoadEarly=false` |
+
+关掉 Jumpstart 之后，APFS 驱动由固定文件提供，不再有"抽到哪个版本"的随机性。官方文档对该键的原文是 *Load embedded APFS drivers from APFS containers* —— 既然已有显式驱动，它就是冗余的。
+
+> `MinVersion` / `MinDate` 只作用于 Jumpstart 加载的驱动，关掉后这两个键失效。
+
+**改完第一次开机先确认一件事**：OpenCore 选单里你的 macOS 卷还在。如果卷直接不见了，说明驱动没加载成功，立刻按 C 节回滚。
+
+**如果驱动正常、密码仍然解不开**，问题就在卷的加密状态。进 Recovery（Recovery 分区不受文件保险箱保护，不需要密码），打开终端：
+
+```bash
+diskutil apfs list                    # 看 Locked 状态，确认没有升级残留的旧卷
+diskutil apfs unlockVolume diskXsY    # 交互输密码，报错比图形界面明确
+diskutil apfs updatePreboot diskXsY   # 解锁成功后立刻执行，重建 Preboot
+```
+
+**能进系统之后**，如果不需要文件保险箱，建议在「系统设置 → 隐私与安全性 → 文件保险箱」里关掉，免得下次大版本升级再踩一次。关之前先把数据备份好。
 
 ---
 
