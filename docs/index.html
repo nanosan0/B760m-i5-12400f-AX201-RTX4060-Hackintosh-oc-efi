@@ -9,14 +9,14 @@
 :root{
   --bg:#fbfaf9; --surface:#ffffff; --surface-2:#f4f2f0;
   --text:#1c1917; --muted:#6f6862; --line:#e5e0da;
-  --accent:#0d7d74; --accent-2:#c0392b; --code-bg:#f6f4f1;
+  --accent:#0d7d74; --accent-fg:#ffffff; --accent-2:#c0392b; --code-bg:#f6f4f1;
   --shadow:0 1px 2px rgba(28,25,23,.05),0 8px 24px -12px rgba(28,25,23,.12);
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#131518; --surface:#1a1d21; --surface-2:#22262b;
     --text:#e8e4e0; --muted:#9a938d; --line:#2e3339;
-    --accent:#4bbfae; --accent-2:#e8766a; --code-bg:#20242a;
+    --accent:#4bbfae; --accent-fg:#0b1a18; --accent-2:#e8766a; --code-bg:#20242a;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
   }
 }
@@ -49,8 +49,9 @@ header.top{
   transition:.15s;
 }
 .switch button:hover{color:var(--text)}
-.switch button[aria-pressed="true"]{background:var(--surface);color:var(--text);
-  box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+.switch button[aria-pressed="true"]{
+  background:var(--accent);color:var(--accent-fg);font-weight:600;
+  box-shadow:0 1px 3px rgba(0,0,0,.18)}
 .btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;
   border:1px solid var(--line);background:var(--surface);color:var(--text);
   padding:6px 12px;border-radius:8px}
