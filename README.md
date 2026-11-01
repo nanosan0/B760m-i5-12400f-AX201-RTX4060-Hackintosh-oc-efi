@@ -2,8 +2,10 @@
 
 **简体中文** · [English](README_EN.md) · 🌐 [网页版说明（可切换语言）](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
 
-> OpenCore **1.0.8** 引导配置 · Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
-> 已通过官方 `ocvalidate` 1.0.8 校验：**No issues found.**
+> **v1.1.0**（2026-11-02）· OpenCore **1.0.9**（`REL-109-2026-09-30`）· Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
+> 已通过官方 `ocvalidate` 校验：**No issues found.**
+>
+> **从 v1.1.0 起不再使用 OCLP-Mod 根补丁。** Wi-Fi 改用 `AirportItlwm` 2.4.0（Tahoe 原生 802.11 栈），声卡由 `SimpleHDA` 恢复原版 `AppleHDA`。改动细节见[更新日志](#更新日志)。
 
 这是一份经过逐项审计的 OpenCore EFI。所有配置项都能在官方 `Configuration.tex` 中找到依据，没有来路不明的键，也没有靠「抄别人的 EFI」堆出来的参数。
 
@@ -45,9 +47,9 @@
 | 核显   | 无（F 后缀无 iGPU）                             | —                                        |
 | 独显   | NVIDIA GeForce RTX 4060（Ada 架构）              | ⚠️ 第三方 Metal 驱动，装于 `/Library/Extensions` |
 | 有线网卡 | Realtek RTL8125 2.5GbE                    | ✅ `RTL812xLucy`                          |
-| 无线网卡 | Intel Wi-Fi 6 AX201                       | ✅ `AirportItlwm` + OCLP-Mod              |
+| 无线网卡 | Intel Wi-Fi 6 AX201（`8086:7A70`）          | ✅ `AirportItlwm` 2.4.0（原生栈，无根补丁）        |
 | 蓝牙   | Intel 蓝牙（AX201 集成）                        | ✅ `IntelBluetoothFirmware`               |
-| 声卡   | Realtek ALC897                            | ✅ `layout-id = 77`                       |
+| 声卡   | Realtek ALC897（`8086:7A50`）               | ✅ `AppleALC` + `SimpleHDA`，`layout-id = 77` |
 | 存储   | NVMe SSD                                  | ✅ `NVMeFix`                              |
 
 ---
@@ -56,10 +58,10 @@
 
 | 组件                                 | 版本                                                                                                 |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
-| EFI 版本                             | v1.0.1（2026-10-22）                                                                                 |
-| OpenCore                           | 1.0.8（x64，PE Machine `0x8664`）                                                                     |
+| EFI 版本                             | **v1.1.0**（2026-11-02）                                                                             |
+| OpenCore                           | 1.0.9（`REL-109-2026-09-30`，x64）                                                                    |
 | 显卡驱动                               | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver)（Metal 翻译层，Turing+） |
-| 目标系统                               | macOS 26 Tahoe（本配置按 **Ventura 版 `AirportItlwm`** + OCLP-Mod 根补丁适配）                                 |
+| 目标系统                               | macOS 26 Tahoe（26.x / Darwin 25.x）                                                                  |
 | Lilu                               | 1.7.3                                                                                              |
 | VirtualSMC                         | 1.3.9（含 SMCProcessor / SMCSuperIO）                                                                 |
 | WhateverGreen                      | 1.7.2                                                                                              |
@@ -68,7 +70,8 @@
 | CPUFriend + DataProvider           | 1.3.1 / 1.0.1                                                                                      |
 | NVMeFix                            | 1.1.4                                                                                              |
 | AMFIPass                           | 1.4.1                                                                                              |
-| AirportItlwm                       | 2.3.0（**Ventura 构建**）                                                                              |
+| AirportItlwm                       | **2.4.0（Tahoe 构建）**，构建号 `7204c69`                                                                |
+| SimpleHDA                          | **1.0.0**（v1.1.0 新增，恢复原版 `AppleHDA`）                                                             |
 | IntelBluetoothFirmware / BTPatcher | 2.5.0                                                                                              |
 | BlueToolFixup                      | 2.6.9                                                                                              |
 | USBToolBox + UTBMap                | 1.2.0 / 1.1                                                                                        |
@@ -96,7 +99,7 @@ EFI/
     │   ├── OpenRuntime.efi           运行时服务（必须）
     │   ├── ResetNvramEntry.efi       开机菜单里的重置 NVRAM 项
     │   └── OpenCanopy.efi            图形化启动菜单
-    ├── Kexts/                22 个启用的 kext
+    ├── Kexts/                20 个 kext，全部启用
     ├── Resources/            GoldenGate 主题（26 个图标）
     ├── Tools/                OpenShell.efi
     └── config.plist
@@ -132,7 +135,7 @@ EFI/
 
 > On a system with such a modern, stricter loader this quirk is required to load Mac OS X 10.4 to macOS 10.12, and **is required for all newer macOS when `SecureBootModel` is set to `Disabled`**.
 
-macOS 的 `boot.efi` 本身带有 `W^X` 权限错误，严格的 PE 加载器会拒绝加载。本配置因为要配合 OCLP-Mod 根补丁，`SecureBootModel` 必须是 `Disabled`，所以 `FixupAppleEfiImages` **必须** 为 `true`。
+macOS 的 `boot.efi` 本身带有 `W^X` 权限错误，严格的 PE 加载器会拒绝加载。本配置的 NVIDIA 驱动 kext 装在 `/Library/Extensions`，外加一批第三方 kext，`SecureBootModel` 必须是 `Disabled`，所以 `FixupAppleEfiImages` **必须** 为 `true`。
 
 > 很多从别处下载的 EFI 缺这个键（`ocvalidate` 会报 `Missing key`），因为它的 Failsafe 是 `false`，缺了就等同于关着 —— 平时能启动，遇到严格固件就卡住。
 
@@ -200,28 +203,70 @@ Metal App → NVMTLDriver.bundle → 翻译器 (AIR → SPIR-V) → NVK (Mesa Vu
 | `-nvrmnogo`         | 驱动先不自启，等 `nvrmctl go` 手动放行    |
 | `-nvrmnobootscreen` | 不截取启动画面                       |
 
-### 3. `Kernel > Block` 的三条屏蔽
+### 3. `Kernel > Block` 的两条屏蔽
 
 | 被屏蔽的 kext                          | 原因                                                                    |
 | ---------------------------------- | --------------------------------------------------------------------- |
-| `com.apple.iokit.IOSkywalkFamily`  | 用仓库里的改版替换，不屏蔽的话系统原版会抢先加载，Intel 网卡起不来                                  |
 | `com.apple.driver.AppleEthernetRL` | 系统自带 RTL 驱动与本机的 `RTL812xLucy` 冲突                                      |
 | `com.apple.iokit.IONDRVSupport`    | 不屏蔽的话，固件自带的 framebuffer 会从 `NVRMFB` 手里抢走 display index 0，NVIDIA 输出起不来 |
 
-### 4. Wi-Fi 的三段式依赖
+> v1.0.x 还有第三条 `com.apple.iokit.IOSkywalkFamily`，是为了让改版 `IOSkywalkFamily.kext` 顶替系统原版。**v1.1.0 已删除这条**——新的 Wi-Fi 方案直接用系统自带的 `IOSkywalkFamily` 与 `IO80211Family`，再屏蔽就等于把自己的地基挖了。
 
-Intel 网卡在 macOS 14+ 上**不是**只放一个 `AirportItlwm` 就够：
+### 4. Wi-Fi 与声卡：v1.1.0 换掉的两条链路
+
+#### 4.1 Wi-Fi：单 kext，直接挂系统原生 802.11 栈
 
 ```
-IOSkywalkFamily.kext            ← 网卡协议栈基座（Apple 原版，需屏蔽系统同名 kext）
-IO80211FamilyLegacy.kext        ← 老版 802.11 框架
-└── AirPortBrcmNIC.kext         ← 它的插件，名字带 Brcm 但 Intel 也靠它挂载
-AirportItlwm-Ventura.kext       ← 真正的 Intel 驱动（Ventura 构建）
+IO80211Family 1200.13.1（系统自带，在 BootKernelExtensions 里）
+└── AirportItlwm.kext 2.4.0（Tahoe 构建）   ← 就这一个，别再往里塞别的
 ```
 
-> 这三个 Apple 原版文件不是「Broadcom 专用、装在 Intel 机上白装」。凡是看到这种说法，都是误判。
->
-> 为什么用 **Ventura 构建** 的 AirportItlwm：Tahoe 上的社区方案就是 Ventura 构建 + OCLP-Mod 根补丁，Sequoia 构建在 Tahoe 上不工作。
+`AirportItlwm-Tahoe` 的 `OSBundleLibraries` 写得很清楚：它依赖 `com.apple.iokit.IO80211Family 1.5.0` 和 `com.apple.iokit.IOSkywalkFamily 1.0`，也就是**系统自带的**那两套。由此推出：
+
+- 不需要 `IOSkywalkFamily.kext`、`IO80211FamilyLegacy.kext`、`AirPortBrcmNIC.kext` 这三个 Apple 原版文件；
+- 不需要屏蔽 `IOSkywalkFamily`；
+- 不需要 OCLP-Mod 根补丁，kext 也不必装进 `/Library/Extensions`；
+- 不需要 HeliPort。
+
+**v1.0.x 的配法为什么打不开 Wi-Fi**：那套「Ventura 构建 + `IO80211FamilyLegacy` + 根补丁」在 macOS 26.3 时代还能凑合，升到 26.7 之后，`IO80211FamilyLegacy` 会让 OpenCore 的虚表补丁对不上：
+
+```
+OC: Prelinked injection AirportItlwm.kext (V2.4.0) - Invalid Parameter
+```
+
+症状很有迷惑性：`en1` 出现了、`system_profiler` 也认到网卡，但 Wi-Fi 开关就是打不开、连不上。**只要同时注入 `IO80211FamilyLegacy`，就一定会踩这个坑。**
+
+验证：
+
+```bash
+kmutil showloaded | grep -iE "IO80211|AirportItlwm"
+# 期望三行：IOSkywalkFamily / IO80211Family(1200.13.1) / AirportItlwm(2.4.0)
+# Legacy 那条不该出现
+system_profiler SPAirPortDataType | head -20   # 应显示 en1、速率、当前信道
+```
+
+#### 4.2 声卡：`SimpleHDA` 把原版 `AppleHDA` 找回来
+
+macOS 26 移除了 `/System/Library/Extensions/AppleHDA.kext`，于是 `system_profiler SPAudioDataType` 里**一个音频设备都没有**——不是 layout 配错，是整层驱动没了。
+
+`SimpleHDA` 是 Lilu 插件，通过 OpenCore 把原版 AppleHDA 注入回来，**不写系统卷、不重建内核集合**，所以 AppleALC 沿用原来的 `layout-id = 77` 即可。
+
+注入顺序不能错：
+
+```
+Lilu.kext → AppleALC.kext → SimpleHDA.kext
+```
+
+前置条件（本配置已满足）：Lilu ≥ 1.7.1、`keepsyms=1`、有效的 `layout-id`。启动参数可用 `-shdaoff` 整体停用、`-shdahaloff` 只停 HAL、`shda-lang=zh_CN` 指定设备名语言。
+
+> 可选组件：`SimpleHDA-HAL-1.0.0.pkg` 为 CoreAudio 提供 AppleHDA 专用属性接口，需 root 安装到 `/Library/Audio/Plug-Ins/SimpleHDA`。驱动会自动检测——装了就用，没装就走普通 IOAudio 路径，**不装也能正常出声**。
+
+验证：
+
+```bash
+system_profiler SPAudioDataType | head -20                      # 应出现「内置扬声器 / 线路输出」等
+ioreg -r -c IOHDACodecDevice -l | grep IOHDACodecVendorID       # 应显示 0x10ec0897（ALC897）
+```
 
 ### 5. boot-args 逐条
 
@@ -233,12 +278,12 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | 参数                                       | 作用                                                                |
 | ---------------------------------------- | ----------------------------------------------------------------- |
 | `keepsyms=1`                             | 内核崩溃时保留函数符号，否则 panic 日志全是裸地址。**不要删**                              |
-| `amfi_get_out_of_my_way=0x1` `amfi=0x80` | 关闭 AMFI 校验，配合 `AMFIPass` + 根补丁                                    |
+| `amfi_get_out_of_my_way=0x1` `amfi=0x80` | 关闭 AMFI 校验（NVIDIA 驱动的 kext 装在 `/Library/Extensions`，需要绕过签名校验）              |
 | `ipc_control_port_options=0`             | 修复部分 App 的 XPC 通信                                                 |
 | `nvfb=1` `nvaccel=1` `nvfbheads=4`       | NullMoth 驱动的必需项：启用 framebuffer、启用 NVAccel 加速、4 个显示头               |
 | `-nvkmsnosmooth`                         | 同上（驱动必需），关闭 nvkms 平滑缩放                                            |
 | `-lilubetaall`                           | 允许 Lilu 及其插件在较新的系统版本上加载                                           |
-| `gfxrst=4`                               | 装了 WhateverGreen 时必需：否则 WEG 的启动画面拷贝会在 NVIDIA 显示打开时读已释放内存，直接 panic |
+| `gfxrst=4`                               | WhateverGreen 的启动画面参数。本配置未启用 WEG，留着不影响启动；自行启用 WEG 的机器不要删 |
 
 ### 6. 日志已关闭
 
@@ -260,8 +305,8 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | --------------------------------- | ------------------------ | ----------------------- |
 | `Misc > Security > ScanPolicy`    | `0`                      | 不限制扫描范围，方便从任意分区启动       |
 | `Misc > Security > Vault`         | `Optional`               | 不做文件保管库校验               |
-| `csr-active-config`               | `0x0FFF`                 | SIP 基本全关，根补丁需要          |
-| `DeviceProperties`                | `layout-id = 77`         | ALC897 的可用 layout       |
+| `csr-active-config`               | `0x0FFF`                 | SIP 基本全关，第三方 kext / NVIDIA 驱动需要 |
+| `DeviceProperties`                | `layout-id = 77`         | ALC897 的可用 layout，AppleALC + SimpleHDA 使用 |
 | `PlatformInfo > UpdateSMBIOSMode` | `Custom`                 | 配合 `SpoofVendor = true` |
 | `UEFI > Output > Resolution`      | `Max`                    | 用显示器原生分辨率               |
 | `Misc > Boot > PickerVariant`     | `Acidanthera\GoldenGate` | 图形化选单主题                 |
@@ -280,6 +325,8 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | `Misc > Debug` 开着文件日志（`Target=67`）                         | 关闭                |
 | 一个未被引用的孤儿 kext（15.4 MB）                                    | 从仓库剔除             |
 | 升级 macOS 26 后开机弹文件保险箱，正确密码也无法解锁                          | 换用显式 `apfs_aligned.efi`，关闭 `EnableJumpstart` |
+| **v1.1.0**：Wi-Fi 有硬件但开关打不开（`en1` 在、连不上）                       | 摘掉 OCLP 遗留栈（`IOSkywalkFamily` / `IO80211FamilyLegacy` / `AirPortBrcmNIC` / Ventura 版 AirportItlwm），改装 Tahoe 版 `AirportItlwm` 2.4.0 |
+| **v1.1.0**：系统里没有任何音频设备（`AppleHDA.kext` 被 macOS 26 移除）        | 加 `SimpleHDA` 1.0.0 恢复原版 AppleHDA，沿用 `layout-id = 77` |
 
 ---
 
@@ -287,7 +334,8 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 
 - **显卡驱动是第三方逆向工程产物。** 驱动的 kext 装在 `/Library/Extensions` 并从 Auxiliary Kernel Collection 加载，macOS 每次大版本升级都可能需要等驱动跟进新版本。升级系统前务必先看 [releases](https://github.com/nullmoth/nvidia-macos-driver/releases) 和 `CHANGELOG`。
 - **显卡只支持 Turing 及更新架构。** Pascal、Maxwell 等更老的卡不在支持范围内。
-- **Wi-Fi 需要根补丁。** 同上，`AirportItlwm` 装进 `/Library/Extensions` 后依赖 OCLP-Mod 补丁链。
+- **Wi-Fi 不需要根补丁，但有协议限制。** `AirportItlwm` 由 OpenCore 注入、跑在系统原生 802.11 栈上，所以**连不了 WPA3-only 网络、不支持强制 PMF、不支持 AWDL / AirDrop / 接力**；Wi-Fi 6（802.11ax）默认关闭，需要时在 boot-args 加 `itlwm_he=1`（需 `itlwm` 支持的硬件）。
+- **声卡只有一个可用 layout。** ALC897 用 `layout-id = 77`；换主板或换 codec 需要重新挑 layout，否则设备能认出来但接口对不上（比如只有耳机响、麦克风不工作）。
 - **`i5-12400F` 无核显**，无法使用 Sidecar / 随航的硬件编码，也无法在无独显时启动 GUI。
 - **不保证移植到其他主板可用。** ACPI 中的 `SSDT-RTCAWAC`、`SSDT-SBUS` 是针对这块板子生成的；换主板请重新生成。
 - **macOS 大版本升级前请先备份 EFI**，并确认 kext 已跟进。
@@ -425,12 +473,47 @@ diskutil apfs updatePreboot diskXsY   # 解锁成功后立刻执行，重建 Pre
 
 ---
 
+## 更新日志
+
+### v1.1.0（2026-11-02）
+
+**Wi-Fi：从 OCLP 遗留栈切换到 Tahoe 原生方案**
+
+| 项目 | v1.0.x | v1.1.0 |
+| --- | --- | --- |
+| 驱动 | `AirportItlwm` 2.3.0（Ventura 构建） | `AirportItlwm` 2.4.0（Tahoe 构建，`7204c69`） |
+| 协议栈 | `IOSkywalkFamily.kext` + `IO80211FamilyLegacy.kext` + `AirPortBrcmNIC.kext` | 系统原生 `IO80211Family` 1200.13.1 |
+| `Kernel > Block` | 3 条（含 `IOSkywalkFamily`） | 2 条 |
+| 根补丁 | 需要 OCLP-Mod | **不需要** |
+| 实际表现 | `en1` 在，但 Wi-Fi 开关打不开 | 5 GHz / 802.11ac / WPA2 正常连接 |
+
+**声卡：新增 `SimpleHDA`**
+
+- macOS 26 移除了 `AppleHDA.kext`，`system_profiler` 里音频设备列表为空
+- 新增 `SimpleHDA.kext` 1.0.0（Lilu 插件，OpenCore 注入恢复原版 AppleHDA，不写系统卷）
+- 注入顺序 `Lilu → AppleALC → SimpleHDA`，沿用 `layout-id = 77`
+
+**其他**
+
+- OpenCore 版本标注更正为 **1.0.9**（NVRAM `REL-109-2026-09-30`；此前写的 1.0.8 是笔误）
+- 清理未引用的 `WhateverGreen` 与 `UTBDefault`，`Kexts/` 精简为 20 个、全部启用
+- `config.plist` 经官方 `ocvalidate` 校验：`No issues found`
+
+### v1.0.1（2026-10-22）
+
+- 修复 macOS 26 升级后 FileVault 无法解锁（改用 `apfs_aligned.efi`，关闭 `EnableJumpstart`）
+- 补齐 `FixupAppleEfiImages`，`ocvalidate` 校验清零
+- 关闭 `Misc > Debug` 文件日志，剔除一个 15.4 MB 孤儿 kext
+
+---
+
 ## 版权与归属
 
 
 - `OpenCore.efi`、`OpenRuntime.efi`、`OpenCanopy.efi`、`ResetNvramEntry.efi`、`HfsPlus.efi` 来自 [Acidanthera OpenCore](https://github.com/acidanthera/OpenCorePkg) 与 [OcBinaryData](https://github.com/acidanthera/OcBinaryData)，遵循 BSD-3-Clause。
 - 各第三方 kext 版权归其作者所有，遵循各自的 LICENSE（Lilu / VirtualSMC / WhateverGreen / AppleALC / RestrictEvents / CPUFriend / NVMeFix 为 BSD-3；AirportItlwm / IntelBluetoothFirmware 为 GPL-2.0；USBToolBox 为 MIT）。
-- `IOSkywalkFamily.kext`、`IO80211FamilyLegacy.kext`、`AirPortBrcmNIC.kext` 是 **Apple 原始二进制文件**，版权归 Apple Inc. 所有，此处仅作互操作性研究用途。若权利人提出异议，将立即移除这些文件。
+- `AirportItlwm.kext` 来自 [laobamac/itlwm](https://github.com/laobamac/itlwm)（上游 [OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm)），遵循 GPL-2.0。
+- `SimpleHDA.kext` 来自 [laobamac/SimpleHDA](https://github.com/laobamac/SimpleHDA)，标识 `cn.laobamac.SimpleHDA`，遵循原项目 LICENSE。该 kext 内含 **AppleHDA 的 Apple 原始二进制载荷**，版权归 Apple Inc. 所有，此处仅作互操作性研究用途；若权利人提出异议，将立即移除该文件。
 - **本仓库不包含** [nullmoth/nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver) 的任何文件。该项目的 kext 与插件以 **PolyForm Noncommercial 1.0.0** 授权（© NullMoth Systems），允许个人、研究、教育与非营利使用，**禁止任何商业用途**；其翻译器部分为 LGPL-3.0-or-later，NVK 部分为 Mesa 的 MIT 授权，GSP 固件遵循 NVIDIA 的可再分发固件许可。下载与安装请走[官方 Releases](https://github.com/nullmoth/nvidia-macos-driver/releases)。
 - `config.plist` 与文档由本仓库维护者整理，可自由参考。
 
@@ -444,9 +527,12 @@ diskutil apfs updatePreboot diskXsY   # 解锁成功后立刻执行，重建 Pre
 - [**nullmoth/nvidia-macos-driver**](https://github.com/nullmoth/nvidia-macos-driver) —— NVIDIA Metal 驱动本体（含 `docs/CARD-SUPPORT.md`、`docs/TROUBLESHOOTING.md`、`docs/SLEEP-WAKE.md`）
 - [nullmoth/1401](https://github.com/nullmoth/1401) —— 配套安装器，可从 Windows 或 macOS 安装
 - [Dortania OpenCore Install Guide](https://dortania.github.io/OpenCore-Install-Guide/)
-- [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher)
+- [**laobamac/itlwm**](https://github.com/laobamac/itlwm) —— `AirportItlwm` 的 Tahoe 构建（v1.1.0 起使用）· [项目文档](https://laobamac.github.io/itlwm/)
+- [OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm) —— 上游项目与兼容性列表
+- [**laobamac/SimpleHDA**](https://github.com/laobamac/SimpleHDA) —— 在 Tahoe 上恢复原版 AppleHDA（v1.1.0 起使用）
 - [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS)
 - [USBToolBox](https://github.com/USBToolBox/tool)
+- [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher) —— v1.0.x 曾用于 Wi-Fi 根补丁，**v1.1.0 起不再需要**
 
 ---
 

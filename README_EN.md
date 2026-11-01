@@ -2,8 +2,10 @@
 
 [简体中文](README.md) · **English** · 🌐 [Web version (language switcher)](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
 
-> OpenCore **1.0.8** boot configuration · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)  
-> Verified with the official `ocvalidate` 1.0.8: **No issues found.**
+> **v1.1.0** (2026-11-02) · OpenCore **1.0.9** (`REL-109-2026-09-30`) · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)  
+> Verified with the official `ocvalidate`: **No issues found.**
+>
+> **Starting with v1.1.0 the OCLP-Mod root patch is no longer used.** Wi-Fi runs on `AirportItlwm` 2.4.0 against the native Tahoe 802.11 stack, and audio is restored by `SimpleHDA` (original `AppleHDA`). See the [changelog](#changelog).
 
 This is an OpenCore EFI that has been audited item by item. Every setting can be traced back to the official `Configuration.tex` — no mystery keys, no parameters copied from someone else's EFI without checking why they exist.
 
@@ -43,9 +45,9 @@ Use [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) to generate your own valu
 | iGPU | none (the F suffix has no iGPU) | — |
 | dGPU | NVIDIA GeForce RTX 4060 (Ada) | ⚠️ third-party Metal driver, installed to `/Library/Extensions` |
 | Ethernet | Realtek RTL8125 2.5GbE | ✅ `RTL812xLucy` |
-| Wi-Fi | Intel Wi-Fi 6 AX201 | ✅ `AirportItlwm` + OCLP-Mod |
+| Wi-Fi | Intel Wi-Fi 6 AX201 (`8086:7A70`) | ✅ `AirportItlwm` 2.4.0 (native stack, no root patch) |
 | Bluetooth | Intel Bluetooth (built into AX201) | ✅ `IntelBluetoothFirmware` |
-| Audio | Realtek ALC897 | ✅ `layout-id = 77` |
+| Audio | Realtek ALC897 (`8086:7A50`) | ✅ `AppleALC` + `SimpleHDA`, `layout-id = 77` |
 | Storage | NVMe SSD | ✅ `NVMeFix` |
 
 ---
@@ -54,19 +56,19 @@ Use [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) to generate your own valu
 
 | Component | Version |
 | --- | --- |
-| EFI version | v1.0.1 (2026-10-22) |
-| OpenCore | 1.0.8 (x64, PE Machine `0x8664`) |
+| EFI version | **v1.1.0** (2026-11-02) |
+| OpenCore | 1.0.9 (`REL-109-2026-09-30`, x64) |
 | GPU driver | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver) (Metal translation layer, Turing+) |
-| Target OS | macOS 26 Tahoe (this config targets the **Ventura build of `AirportItlwm`** plus the OCLP-Mod root patch) |
+| Target OS | macOS 26 Tahoe (26.x / Darwin 25.x) |
 | Lilu | 1.7.3 |
 | VirtualSMC | 1.3.9 (with SMCProcessor / SMCSuperIO) |
-| WhateverGreen | 1.7.2 |
 | AppleALC | 1.9.9 |
+| SimpleHDA | **1.0.0** (new in v1.1.0, restores the original `AppleHDA`) |
 | RestrictEvents | 1.1.7 |
 | CPUFriend + DataProvider | 1.3.1 / 1.0.1 |
 | NVMeFix | 1.1.4 |
 | AMFIPass | 1.4.1 |
-| AirportItlwm | 2.3.0 (**Ventura build**) |
+| AirportItlwm | **2.4.0 (Tahoe build)**, build `7204c69` |
 | IntelBluetoothFirmware / BTPatcher | 2.5.0 |
 | BlueToolFixup | 2.6.9 |
 | USBToolBox + UTBMap | 1.2.0 / 1.1 |
@@ -94,7 +96,7 @@ EFI/
     │   ├── OpenRuntime.efi           runtime services (required)
     │   ├── ResetNvramEntry.efi       "Reset NVRAM" entry in the boot menu
     │   └── OpenCanopy.efi            graphical boot menu
-    ├── Kexts/                22 enabled kexts
+    ├── Kexts/                20 kexts, all enabled
     ├── Resources/            GoldenGate theme (26 icons)
     ├── Tools/                OpenShell.efi
     └── config.plist
@@ -130,7 +132,7 @@ What the official `Configuration.tex` says about `FixupAppleEfiImages`:
 
 > On a system with such a modern, stricter loader this quirk is required to load Mac OS X 10.4 to macOS 10.12, and **is required for all newer macOS when `SecureBootModel` is set to `Disabled`**.
 
-macOS's `boot.efi` carries a `W^X` permission bug that strict PE loaders refuse to load. This configuration needs `SecureBootModel = Disabled` in order to use the OCLP-Mod root patch, so `FixupAppleEfiImages` **must** be `true`.
+macOS's `boot.efi` carries a `W^X` permission bug that strict PE loaders refuse to load. This configuration needs `SecureBootModel = Disabled` because the NVIDIA driver's kexts live in `/Library/Extensions` and are not Apple-signed, so `FixupAppleEfiImages` **must** be `true`.
 
 > Plenty of EFIs downloaded from elsewhere are missing this key (`ocvalidate` reports `Missing key`). Its failsafe value is `false`, so a missing key is the same as having it off — it boots fine most of the time and hangs the moment you hit a strict firmware.
 
@@ -198,28 +200,70 @@ So it has nothing to do with the GPU and everything to do with **WhateverGreen**
 | `-nvrmnogo` | the driver does not start on its own; wait for a manual `nvrmctl go` |
 | `-nvrmnobootscreen` | does not capture the boot screen |
 
-### 3. The three `Kernel > Block` entries
+### 3. The two `Kernel > Block` entries
 
 | Blocked kext | Why |
 | --- | --- |
-| `com.apple.iokit.IOSkywalkFamily` | replaced by the patched build in this repo; without the block the stock version loads first and the Intel NIC never comes up |
 | `com.apple.driver.AppleEthernetRL` | the stock RTL driver conflicts with `RTL812xLucy` on this machine |
 | `com.apple.iokit.IONDRVSupport` | without the block, the firmware's own framebuffer takes display index 0 away from `NVRMFB` and the NVIDIA output never lights up |
 
-### 4. The three-stage Wi-Fi dependency
+> v1.0.x carried a third entry, `com.apple.iokit.IOSkywalkFamily`, so that the patched `IOSkywalkFamily.kext` could take over from the stock one. **v1.1.0 removes it** — the new Wi-Fi setup runs on the stock `IOSkywalkFamily` and `IO80211Family`, so blocking them would saw off the branch it sits on.
 
-On macOS 14+ an Intel card is **not** just a matter of dropping in `AirportItlwm`:
+### 4. Wi-Fi and audio: the two stacks v1.1.0 replaced
+
+#### 4.1 Wi-Fi: one kext, on top of the native 802.11 stack
 
 ```
-IOSkywalkFamily.kext            ← base of the NIC protocol stack (Apple original, needs blocking the stock kext)
-IO80211FamilyLegacy.kext        ← the older 802.11 framework
-└── AirPortBrcmNIC.kext         ← its plug-in; "Brcm" in the name, but Intel cards mount through it too
-AirportItlwm-Ventura.kext       ← the actual Intel driver (Ventura build)
+IO80211Family 1200.13.1 (shipped by the system, inside BootKernelExtensions)
+└── AirportItlwm.kext 2.4.0 (Tahoe build)   ← this one only; nothing else
 ```
 
-> These three Apple originals are not "Broadcom-only, pointless on an Intel machine". Anyone saying so has it wrong.
->
-> Why the **Ventura build** of AirportItlwm: the community approach on Tahoe is the Ventura build plus the OCLP-Mod root patch; the Sequoia build does not work on Tahoe.
+`AirportItlwm-Tahoe` declares its dependencies plainly in `OSBundleLibraries`: `com.apple.iokit.IO80211Family 1.5.0` and `com.apple.iokit.IOSkywalkFamily 1.0`, i.e. the **stock** ones. Which means:
+
+- no `IOSkywalkFamily.kext`, `IO80211FamilyLegacy.kext` or `AirPortBrcmNIC.kext`;
+- no `IOSkywalkFamily` block;
+- no OCLP-Mod root patch, and the kext does not need to live in `/Library/Extensions`;
+- no HeliPort.
+
+**Why the v1.0.x setup could not turn Wi-Fi on:** that "Ventura build + `IO80211FamilyLegacy` + root patch" combo limped along on macOS 26.3, but once the system moved to 26.7 the legacy framework made OpenCore's vtable patcher give up:
+
+```
+OC: Prelinked injection AirportItlwm.kext (V2.4.0) - Invalid Parameter
+```
+
+The symptom is misleading: `en1` shows up and `system_profiler` sees the card, but the Wi-Fi switch simply will not turn on or associate. **Inject `IO80211FamilyLegacy` alongside the driver and you will hit this every time.**
+
+Verify:
+
+```bash
+kmutil showloaded | grep -iE "IO80211|AirportItlwm"
+# expect three lines: IOSkywalkFamily / IO80211Family(1200.13.1) / AirportItlwm(2.4.0)
+# the Legacy entry must NOT appear
+system_profiler SPAirPortDataType | head -20   # en1, rate, current channel
+```
+
+#### 4.2 Audio: `SimpleHDA` brings the original `AppleHDA` back
+
+macOS 26 removed `/System/Library/Extensions/AppleHDA.kext`, so `system_profiler SPAudioDataType` lists **no audio devices at all** — it is not a wrong `layout-id`, the whole driver layer is gone.
+
+`SimpleHDA` is a Lilu plug-in that injects the original AppleHDA back through OpenCore, **without touching the system volume or rebuilding the kernel collection**, so AppleALC keeps working with the existing `layout-id = 77`.
+
+Load order matters:
+
+```
+Lilu.kext → AppleALC.kext → SimpleHDA.kext
+```
+
+Prerequisites (already satisfied here): Lilu ≥ 1.7.1, `keepsyms=1`, a valid `layout-id`. Boot flags: `-shdaoff` disables the driver, `-shdahaloff` disables only the HAL, `shda-lang=en` forces the device-name language.
+
+> Optional: `SimpleHDA-HAL-1.0.0.pkg` adds the AppleHDA-specific property/control interface for CoreAudio and must be installed as root into `/Library/Audio/Plug-Ins/SimpleHDA`. The driver detects it automatically — with it you get the HAL path, without it the plain IOAudio path; **audio works either way**.
+
+Verify:
+
+```bash
+system_profiler SPAudioDataType | head -20                      # "Internal Speakers" / "Line Out" should appear
+ioreg -r -c IOHDACodecDevice -l | grep IOHDACodecVendorID       # should report 0x10ec0897 (ALC897)
+```
 
 ### 5. boot-args, one by one
 
@@ -231,12 +275,12 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | Flag | What it does |
 | --- | --- |
 | `keepsyms=1` | keeps function symbols in kernel panics; without it panic logs are bare addresses. **Do not remove** |
-| `amfi_get_out_of_my_way=0x1` `amfi=0x80` | disables AMFI validation, together with `AMFIPass` + the root patch |
+| `amfi_get_out_of_my_way=0x1` `amfi=0x80` | disables AMFI validation (the NVIDIA driver's kexts live in `/Library/Extensions` and are not signed by Apple) |
 | `ipc_control_port_options=0` | fixes XPC communication for some apps |
 | `nvfb=1` `nvaccel=1` `nvfbheads=4` | required by the NullMoth driver: enable framebuffer, enable NVAccel acceleration, 4 display heads |
 | `-nvkmsnosmooth` | also required by the driver: disables nvkms smooth scaling |
 | `-lilubetaall` | lets Lilu and its plug-ins load on newer OS versions |
-| `gfxrst=4` | required with WhateverGreen: otherwise WEG's boot-screen copy reads freed memory when the NVIDIA display comes up, straight to a panic |
+| `gfxrst=4` | a WhateverGreen boot-screen flag. WEG is not enabled here, so it is inert; do not remove it if you enable WEG yourself |
 
 ### 6. Logging is off
 
@@ -258,8 +302,8 @@ Then add `debug=0x100` back at the front of boot-args.
 | --- | --- | --- |
 | `Misc > Security > ScanPolicy` | `0` | do not restrict scanning; boot from any partition |
 | `Misc > Security > Vault` | `Optional` | no vault validation |
-| `csr-active-config` | `0x0FFF` | SIP essentially off, needed by the root patch |
-| `DeviceProperties` | `layout-id = 77` | a working layout for ALC897 |
+| `csr-active-config` | `0x0FFF` | SIP essentially off; needed by third-party kexts and the NVIDIA driver |
+| `DeviceProperties` | `layout-id = 77` | a working layout for ALC897, used by AppleALC + SimpleHDA |
 | `PlatformInfo > UpdateSMBIOSMode` | `Custom` | pairs with `SpoofVendor = true` |
 | `UEFI > Output > Resolution` | `Max` | use the monitor's native resolution |
 | `Misc > Boot > PickerVariant` | `Acidanthera\GoldenGate` | graphical boot menu theme |
@@ -278,6 +322,8 @@ This EFI has been fully audited; the following issues were fixed (see the commit
 | `Misc > Debug` had file logging on (`Target=67`) | turned off |
 | one unreferenced orphan kext (15.4 MB) | removed from the repository |
 | after upgrading to macOS 26, FileVault appears at boot and even the correct password is rejected | switched to an explicit `apfs_aligned.efi`, `EnableJumpstart` turned off |
+| **v1.1.0**: Wi-Fi hardware present but the switch refuses to turn on (`en1` exists, never associates) | dropped the OCLP legacy stack (`IOSkywalkFamily` / `IO80211FamilyLegacy` / `AirPortBrcmNIC` / Ventura AirportItlwm) and switched to `AirportItlwm` 2.4.0 for Tahoe |
+| **v1.1.0**: no audio devices at all (`AppleHDA.kext` removed by macOS 26) | added `SimpleHDA` 1.0.0 to restore the original AppleHDA, keeping `layout-id = 77` |
 
 ---
 
@@ -285,7 +331,8 @@ This EFI has been fully audited; the following issues were fixed (see the commit
 
 - **The GPU driver is a third-party reverse-engineering effort.** Its kexts live in `/Library/Extensions` and load from the Auxiliary Kernel Collection; every macOS major release may require waiting for the driver to catch up. Before upgrading, check the [releases](https://github.com/nullmoth/nvidia-macos-driver/releases) and `CHANGELOG`.
 - **Only Turing and newer GPUs are supported.** Older cards such as Pascal and Maxwell are out of scope.
-- **Wi-Fi needs the root patch.** Same story: once `AirportItlwm` is installed to `/Library/Extensions` it depends on the OCLP-Mod patch chain.
+- **Wi-Fi needs no root patch, but has protocol limits.** `AirportItlwm` is injected by OpenCore and runs on the native 802.11 stack, so it **cannot join WPA3-only networks, does not support mandatory PMF, and has no AWDL / AirDrop / Handoff**. Wi-Fi 6 (802.11ax) is off by default; add `itlwm_he=1` if your card supports it.
+- **Audio depends on one specific layout.** ALC897 uses `layout-id = 77`; on another board or codec you must pick a matching layout, otherwise the device appears but the jacks are wrong (speakers only, dead microphone, and so on).
 - **The `i5-12400F` has no iGPU**, so Sidecar hardware encoding is unavailable, and there is no GUI at all without the dGPU.
 - **Porting to another motherboard is not guaranteed.** `SSDT-RTCAWAC` and `SSDT-SBUS` in the ACPI folder were generated for this board specifically; regenerate them for a different one.
 - **Back up your EFI before any macOS major upgrade**, and confirm the kexts have caught up.
@@ -423,12 +470,47 @@ diskutil apfs updatePreboot diskXsY   # run right after a successful unlock to r
 
 ---
 
+## Changelog
+
+### v1.1.0 (2026-11-02)
+
+**Wi-Fi: from the OCLP legacy stack to the native Tahoe stack**
+
+| Item | v1.0.x | v1.1.0 |
+| --- | --- | --- |
+| Driver | `AirportItlwm` 2.3.0 (Ventura build) | `AirportItlwm` 2.4.0 (Tahoe build, `7204c69`) |
+| Framework | `IOSkywalkFamily.kext` + `IO80211FamilyLegacy.kext` + `AirPortBrcmNIC.kext` | stock `IO80211Family` 1200.13.1 |
+| `Kernel > Block` | 3 entries (including `IOSkywalkFamily`) | 2 entries |
+| Root patch | OCLP-Mod required | **not required** |
+| Behaviour | `en1` present, Wi-Fi switch would not turn on | 5 GHz / 802.11ac / WPA2 associates normally |
+
+**Audio: `SimpleHDA` added**
+
+- macOS 26 removed `AppleHDA.kext`, leaving the audio device list empty
+- Added `SimpleHDA.kext` 1.0.0 (Lilu plug-in; OpenCore injects the original AppleHDA, no system volume writes)
+- Load order `Lilu → AppleALC → SimpleHDA`, keeping `layout-id = 77`
+
+**Other**
+
+- OpenCore version corrected to **1.0.9** (NVRAM `REL-109-2026-09-30`; the earlier 1.0.8 note was a typo)
+- Pruned the unreferenced `WhateverGreen` and `UTBDefault` kexts; `Kexts/` is now 20 kexts, all enabled
+- `config.plist` passes the official `ocvalidate`: `No issues found`
+
+### v1.0.1 (2026-10-22)
+
+- Fixed FileVault failing to unlock after the macOS 26 upgrade (`apfs_aligned.efi`, `EnableJumpstart` off)
+- Added the missing `FixupAppleEfiImages`; `ocvalidate` is clean
+- Turned off `Misc > Debug` file logging; removed a 15.4 MB orphan kext
+
+---
+
 ## Copyright and attribution
 
 
 - `OpenCore.efi`, `OpenRuntime.efi`, `OpenCanopy.efi`, `ResetNvramEntry.efi` and `HfsPlus.efi` come from [Acidanthera OpenCore](https://github.com/acidanthera/OpenCorePkg) and [OcBinaryData](https://github.com/acidanthera/OcBinaryData), under BSD-3-Clause.
 - All third-party kexts are copyright their respective authors and follow their own licenses (Lilu / VirtualSMC / WhateverGreen / AppleALC / RestrictEvents / CPUFriend / NVMeFix are BSD-3; AirportItlwm / IntelBluetoothFirmware are GPL-2.0; USBToolBox is MIT).
-- `IOSkywalkFamily.kext`, `IO80211FamilyLegacy.kext` and `AirPortBrcmNIC.kext` are **original Apple binaries**, copyright Apple Inc., included solely for interoperability research. They will be removed immediately if the rights holder objects.
+- `AirportItlwm.kext` comes from [laobamac/itlwm](https://github.com/laobamac/itlwm) (upstream [OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm)), GPL-2.0.
+- `SimpleHDA.kext` comes from [laobamac/SimpleHDA](https://github.com/laobamac/SimpleHDA), identifier `cn.laobamac.SimpleHDA`, under that project's license. The kext embeds an **original AppleHDA binary payload**, copyright Apple Inc., included solely for interoperability research; it will be removed immediately if the rights holder objects.
 - **This repository contains no files from** [nullmoth/nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver). That project's kexts and plug-ins are licensed under **PolyForm Noncommercial 1.0.0** (© NullMoth Systems), which permits personal, research, educational and non-profit use and **forbids any commercial use**; its translator is LGPL-3.0-or-later, the NVK part is Mesa's MIT license, and the GSP firmware follows NVIDIA's redistributable firmware license. Download and install it from the [official releases](https://github.com/nullmoth/nvidia-macos-driver/releases).
 - `config.plist` and the documentation were assembled by this repository's maintainer; feel free to use them as a reference.
 
@@ -442,9 +524,12 @@ Changing boot configuration is risky: it can leave the system unbootable, cause 
 - [**nullmoth/nvidia-macos-driver**](https://github.com/nullmoth/nvidia-macos-driver) — the NVIDIA Metal driver itself (including `docs/CARD-SUPPORT.md`, `docs/TROUBLESHOOTING.md`, `docs/SLEEP-WAKE.md`)
 - [nullmoth/1401](https://github.com/nullmoth/1401) — the companion installer, runnable from Windows or macOS
 - [Dortania OpenCore Install Guide](https://dortania.github.io/OpenCore-Install-Guide/)
-- [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher)
+- [**laobamac/itlwm**](https://github.com/laobamac/itlwm) — the Tahoe build of `AirportItlwm` (used since v1.1.0) · [project docs](https://laobamac.github.io/itlwm/)
+- [OpenIntelWireless/itlwm](https://github.com/OpenIntelWireless/itlwm) — upstream project and compatibility list
+- [**laobamac/SimpleHDA**](https://github.com/laobamac/SimpleHDA) — restores the original AppleHDA on Tahoe (used since v1.1.0)
 - [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS)
 - [USBToolBox](https://github.com/USBToolBox/tool)
+- [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher) — used for the Wi-Fi root patch in v1.0.x, **no longer needed since v1.1.0**
 
 ---
 
