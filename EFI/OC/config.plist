@@ -333,7 +333,7 @@
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AirportItlwm</string>
 				<key>MaxKernel</key>
-				<string></string>
+				<string>25.99.99</string>
 				<key>MinKernel</key>
 				<string>25.0.0</string>
 				<key>PlistPath</key>
@@ -868,7 +868,7 @@
 				AAAAAAAAAAAAAAAAAAA=
 				</data>
 				<key>boot-args</key>
-				<string>keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4</string>
+				<string>keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0 nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1</string>
 				<key>csr-active-config</key>
 				<data>
 				/w8AAA==

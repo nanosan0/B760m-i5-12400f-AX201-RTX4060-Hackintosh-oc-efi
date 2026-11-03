@@ -2,7 +2,7 @@
 
 **简体中文** · [English](README_EN.md) · 🌐 [网页版说明（可切换语言）](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
 
-> **v1.1.0**（2026-11-02）· OpenCore **1.0.9**（`REL-109-2026-09-30`）· Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
+> **v1.1.1**（2026-11-03）· OpenCore **1.0.9**（`REL-109-2026-09-30`）· Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
 > 已通过官方 `ocvalidate` 校验：**No issues found.**
 >
 > **从 v1.1.0 起不再使用 OCLP-Mod 根补丁。** Wi-Fi 改用 `AirportItlwm` 2.4.0（Tahoe 原生 802.11 栈），声卡由 `SimpleHDA` 恢复原版 `AppleHDA`。改动细节见[更新日志](#更新日志)。
@@ -58,7 +58,7 @@
 
 | 组件                                 | 版本                                                                                                 |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
-| EFI 版本                             | **v1.1.0**（2026-11-02）                                                                             |
+| EFI 版本                             | **v1.1.1**（2026-11-03）                                                                             |
 | OpenCore                           | 1.0.9（`REL-109-2026-09-30`，x64）                                                                    |
 | 显卡驱动                               | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver)（Metal 翻译层，Turing+） |
 | 目标系统                               | macOS 26 Tahoe（26.x / Darwin 25.x）                                                                  |
@@ -245,6 +245,14 @@ kmutil showloaded | grep -iE "IO80211|AirportItlwm"
 system_profiler SPAirPortDataType | head -20   # 应显示 en1、速率、当前信道
 ```
 
+**`MaxKernel` 封在 `25.99.99`（v1.1.1 起）。** 这一项比较的是**内核（Darwin）版本**，不是 macOS 版本号：macOS 26 跑在 Darwin 25 上（本机 `uname -r` 为 `25.6.0`）。`AirportItlwm` 靠 OpenCore 的 OCAK 去修补 `IO80211Controller` 的 `_RESERVEDIO80211Controller1~16` 这些保留槽位，修补的前提是「父类虚表布局与编译时完全一致」，而这个前提只在作者对标的系统版本上成立。
+
+不封顶的后果分三档：虚表没变（无事）、patch 失败（kext 被丢弃、Wi-Fi 消失，就是 26.3 那次）、patch 部分成功或影响启动路径（进系统后 panic，甚至卡在进度条）。封顶后 OpenCore 在注入阶段就跳过，把未来那次必然发生的虚表漂移挡在开机之前。
+
+为什么是 `25.99.99` 而不是 `25.6.0`：点版本还会涨，`25.6.0` 下次升到 26.8 就可能失效。这个上界覆盖整个 Darwin 25 系列，又在 Darwin 26 面前精确停住。`SimpleHDA` 官方示例配置写的正是同一组值（`MinKernel 25.0.0` / `MaxKernel 25.99.99`），两者现在一致。
+
+> 代价：将来升级 macOS 27 时 Wi-Fi 会直接不可用，需要等社区出新构建后手动放开上界。这是有意留的一道人工检查点——宁可升级后发现要重配 Wi-Fi，也不要升级后开不了机。
+
 #### 4.2 声卡：`SimpleHDA` 把原版 `AppleHDA` 找回来
 
 macOS 26 移除了 `/System/Library/Extensions/AppleHDA.kext`，于是 `system_profiler SPAudioDataType` 里**一个音频设备都没有**——不是 layout 配错，是整层驱动没了。
@@ -272,7 +280,7 @@ ioreg -r -c IOHDACodecDevice -l | grep IOHDACodecVendorID       # 应显示 0x10
 
 ```
 keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0
-nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
+nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1
 ```
 
 | 参数                                       | 作用                                                                |
@@ -284,6 +292,7 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | `-nvkmsnosmooth`                         | 同上（驱动必需），关闭 nvkms 平滑缩放                                            |
 | `-lilubetaall`                           | 允许 Lilu 及其插件在较新的系统版本上加载                                           |
 | `gfxrst=4`                               | WhateverGreen 的启动画面参数。本配置未启用 WEG，留着不影响启动；自行启用 WEG 的机器不要删 |
+| `itlwm_he=1`                             | 开启 802.11ax（Wi-Fi 6），v1.1.1 起加入。`itlwm` 的 HE 实现默认关闭且偏保守，协商速率未必高于 ac（实测 ax 245 Mbps vs ac 260 Mbps）；若出现断连或明显掉速，删掉本项即可回退到 ac |
 
 ### 6. 日志已关闭
 
@@ -474,6 +483,20 @@ diskutil apfs updatePreboot diskXsY   # 解锁成功后立刻执行，重建 Pre
 ---
 
 ## 更新日志
+
+### v1.1.1（2026-11-03）
+
+**开启 802.11ax（Wi-Fi 6），并给驱动加一道内核版本上界**
+
+| 项目 | v1.1.0 | v1.1.1 |
+| --- | --- | --- |
+| `boot-args` | 无 HE 参数 | 追加 `itlwm_he=1` |
+| 链路层 | 802.11ac | `802.11 a/b/g/n/ac/ax` |
+| `AirportItlwm > MaxKernel` | 空（无上限） | `25.99.99` |
+
+- 开启后实测：`PHY Mode: 802.11ax`、信道 40（5 GHz / 80 MHz）、`Transmit Rate` 245 Mbps、MCS 3
+- 协商速率比 ac 时代的 260 Mbps 略低，属 `itlwm` 的 HE 实现偏保守，不是故障
+- `MaxKernel` 封顶的原理与代价写在 4.1 节末尾，升级 macOS 27 前务必先读
 
 ### v1.1.0（2026-11-02）
 

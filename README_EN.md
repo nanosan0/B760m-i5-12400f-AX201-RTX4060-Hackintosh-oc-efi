@@ -2,7 +2,7 @@
 
 [简体中文](README.md) · **English** · 🌐 [Web version (language switcher)](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
 
-> **v1.1.0** (2026-11-02) · OpenCore **1.0.9** (`REL-109-2026-09-30`) · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)  
+> **v1.1.1** (2026-11-03) · OpenCore **1.0.9** (`REL-109-2026-09-30`) · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)  
 > Verified with the official `ocvalidate`: **No issues found.**
 >
 > **Starting with v1.1.0 the OCLP-Mod root patch is no longer used.** Wi-Fi runs on `AirportItlwm` 2.4.0 against the native Tahoe 802.11 stack, and audio is restored by `SimpleHDA` (original `AppleHDA`). See the [changelog](#changelog).
@@ -56,7 +56,7 @@ Use [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) to generate your own valu
 
 | Component | Version |
 | --- | --- |
-| EFI version | **v1.1.0** (2026-11-02) |
+| EFI version | **v1.1.1** (2026-11-03) |
 | OpenCore | 1.0.9 (`REL-109-2026-09-30`, x64) |
 | GPU driver | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver) (Metal translation layer, Turing+) |
 | Target OS | macOS 26 Tahoe (26.x / Darwin 25.x) |
@@ -242,6 +242,14 @@ kmutil showloaded | grep -iE "IO80211|AirportItlwm"
 system_profiler SPAirPortDataType | head -20   # en1, rate, current channel
 ```
 
+**`MaxKernel` is capped at `25.99.99` (since v1.1.1).** This field compares the **kernel (Darwin) version**, not the macOS version number: macOS 26 runs on Darwin 25 (this machine reports `25.6.0`). `AirportItlwm` relies on OpenCore's OCAK to patch the `_RESERVEDIO80211Controller1~16` reserved slots of `IO80211Controller`, and that patch only works when the superclass vtable layout matches what the driver was compiled against — a condition that holds only for the system the author targeted.
+
+Without a cap there are three outcomes: the vtable is unchanged (fine), the patch fails (kext discarded, Wi-Fi gone — exactly what happened on 26.3), or the patch partially succeeds / touches the boot path (kernel panic after login, or stuck at the progress bar). With the cap, OpenCore skips the injection entirely, keeping that future vtable drift out of the boot process.
+
+Why `25.99.99` and not `25.6.0`: point releases keep climbing, so `25.6.0` could break on 26.8. This upper bound covers the whole Darwin 25 series and stops exactly at Darwin 26. `SimpleHDA`'s official sample config uses the same pair (`MinKernel 25.0.0` / `MaxKernel 25.99.99`), so the two now agree.
+
+> The trade-off: after upgrading to macOS 27 Wi-Fi will simply be gone until a new community build appears and you raise the bound by hand. That is a deliberate manual checkpoint — better to find you must reconfigure Wi-Fi than to find the machine will not boot.
+
 #### 4.2 Audio: `SimpleHDA` brings the original `AppleHDA` back
 
 macOS 26 removed `/System/Library/Extensions/AppleHDA.kext`, so `system_profiler SPAudioDataType` lists **no audio devices at all** — it is not a wrong `layout-id`, the whole driver layer is gone.
@@ -269,7 +277,7 @@ ioreg -r -c IOHDACodecDevice -l | grep IOHDACodecVendorID       # should report 
 
 ```
 keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0
-nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
+nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1
 ```
 
 | Flag | What it does |
@@ -281,6 +289,7 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4
 | `-nvkmsnosmooth` | also required by the driver: disables nvkms smooth scaling |
 | `-lilubetaall` | lets Lilu and its plug-ins load on newer OS versions |
 | `gfxrst=4` | a WhateverGreen boot-screen flag. WEG is not enabled here, so it is inert; do not remove it if you enable WEG yourself |
+| `itlwm_he=1` | enables 802.11ax (Wi-Fi 6), added in v1.1.1. `itlwm`'s HE implementation is off by default and conservative, so the negotiated rate is not necessarily higher than ac (measured: ax 245 Mbps vs ac 260 Mbps). If you see disconnects or a clear slowdown, drop this flag to fall back to ac |
 
 ### 6. Logging is off
 
@@ -471,6 +480,20 @@ diskutil apfs updatePreboot diskXsY   # run right after a successful unlock to r
 ---
 
 ## Changelog
+
+### v1.1.1 (2026-11-03)
+
+**802.11ax (Wi-Fi 6) enabled, plus a kernel-version ceiling on the driver**
+
+| Item | v1.1.0 | v1.1.1 |
+| --- | --- | --- |
+| `boot-args` | no HE flag | adds `itlwm_he=1` |
+| Link layer | 802.11ac | `802.11 a/b/g/n/ac/ax` |
+| `AirportItlwm > MaxKernel` | empty (no bound) | `25.99.99` |
+
+- Measured after enabling: `PHY Mode: 802.11ax`, channel 40 (5 GHz / 80 MHz), `Transmit Rate` 245 Mbps, MCS 3
+- Slightly below the 260 Mbps seen under ac — that is `itlwm`'s conservative HE implementation, not a fault
+- The rationale and the cost of the `MaxKernel` cap are at the end of section 4.1; read it before upgrading to macOS 27
 
 ### v1.1.0 (2026-11-02)
 
