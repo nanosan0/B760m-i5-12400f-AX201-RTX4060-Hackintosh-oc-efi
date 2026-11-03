@@ -1,0 +1,89 @@
+name: Publish Release
+
+# 打 tag 即发版：自动把 EFI 目录压成 EFI-<tag>.zip，按 docs/releases/<tag>.md 填写说明，
+# 附上 SHA-256 后创建（或更新）同一个 tag 的 Release。
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '已存在的 tag，例如 v1.1.1'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 解析 tag
+        id: meta
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          case "$tag" in
+            v*) ;;
+            *) echo "tag 必须以 v 开头：$tag" >&2; exit 1 ;;
+          esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "本次发布：$tag"
+
+      - name: 检出该 tag 的源码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+
+      - name: 打包 EFI
+        id: pack
+        run: |
+          set -euo pipefail
+          tag="${{ steps.meta.outputs.tag }}"
+          [ -d EFI ] || { echo "仓库里没有 EFI 目录" >&2; exit 1; }
+          # 固定 mtime，保证同一个 tag 重复构建出来的压缩包一致
+          find EFI -exec touch -t 202601010000 {} +
+          rm -f "EFI-$tag.zip"
+          zip -q -r -X "EFI-$tag.zip" EFI -x '*.DS_Store' '*__MACOSX*'
+          sha="$(sha256sum "EFI-$tag.zip" | cut -d' ' -f1)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "文件大小：$(du -h "EFI-$tag.zip" | cut -f1)  文件数：$(unzip -l "EFI-$tag.zip" | tail -1 | awk '{print $2}')"
+          echo "SHA-256：$sha"
+
+      - name: 准备发行说明
+        id: notes
+        run: |
+          set -euo pipefail
+          tag="${{ steps.meta.outputs.tag }}"
+          src="docs/releases/$tag.md"
+          mkdir -p .release
+          if [ -f "$src" ]; then
+            title="$(head -n 1 "$src" | sed 's/^#*[[:space:]]*//')"
+            cp "$src" .release/body.md
+          else
+            title="$tag"
+            printf '# %s\n\n自动发布。\n' "$tag" > .release/body.md
+          fi
+          {
+            printf '\n---\n\n'
+            printf '**附件**：`EFI-%s.zip`（从本 tag 的 `EFI/` 目录打包）  \n' "$tag"
+            printf '**SHA-256**：`%s`\n' "${{ steps.pack.outputs.sha }}"
+          } >> .release/body.md
+          printf 'title=%s\n' "$title" >> "$GITHUB_OUTPUT"
+
+      - name: 创建或更新 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.notes.outputs.title }}
+          body_path: .release/body.md
+          files: EFI-${{ steps.meta.outputs.tag }}.zip
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
