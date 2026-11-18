@@ -2,10 +2,10 @@
 
 [简体中文](README.md) · **English** · 🌐 [Web version (language switcher)](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
 
-> **v1.1.1** (2026-11-03) · OpenCore **1.0.9** (`REL-109-2026-09-30`) · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)  
+> **v2.0.0** (2026-11-18) · OpenCore **1.0.9** (`REL-109-2026-09-30`) · Intel i5-12400F · NVIDIA RTX 4060 (NullMoth Metal driver)  
 > Verified with the official `ocvalidate`: **No issues found.**
 >
-> **Starting with v1.1.0 the OCLP-Mod root patch is no longer used.** Wi-Fi runs on `AirportItlwm` 2.4.0 against the native Tahoe 802.11 stack, and audio is restored by `SimpleHDA` (original `AppleHDA`). See the [changelog](#changelog).
+> **Starting with v1.1.0 the OCLP-Mod root patch is no longer used.** Since v2.0.0 Wi-Fi runs on `ForbiddenItlwm` 0.6.0-beta.2 (the AWDL branch, **AirDrop works**), and audio is restored by `SimpleHDA` (original `AppleHDA`). See the [changelog](#changelog).
 
 This is an OpenCore EFI that has been audited item by item. Every setting can be traced back to the official `Configuration.tex` — no mystery keys, no parameters copied from someone else's EFI without checking why they exist.
 
@@ -56,7 +56,7 @@ Use [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) to generate your own valu
 
 | Component | Version |
 | --- | --- |
-| EFI version | **v1.1.1** (2026-11-03) |
+| EFI version | **v2.0.0** (2026-11-18) |
 | OpenCore | 1.0.9 (`REL-109-2026-09-30`, x64) |
 | GPU driver | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver) (Metal translation layer, Turing+) |
 | Target OS | macOS 26 Tahoe (26.x / Darwin 25.x) |
@@ -68,8 +68,9 @@ Use [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) to generate your own valu
 | CPUFriend + DataProvider | 1.3.1 / 1.0.1 |
 | NVMeFix | 1.1.4 |
 | AMFIPass | 1.4.1 |
-| AirportItlwm | **2.4.0 (Tahoe build)**, build `7204c69` |
-| IntelBluetoothFirmware / BTPatcher | 2.5.0 |
+| ForbiddenItlwm | **0.6.0-beta.2 (Tahoe build)**, AWDL / AirDrop branch (based on `AirportItlwm` 2.4.1) |
+| BTLEAdvFixup | **0.9.3** (new in v2.0.0, Bluetooth LE advertising for AirDrop) |
+| IntelBluetoothFirmware | 2.5.0 (`IntelBTPatcher` disabled, taken over by `BTLEAdvFixup`) |
 | BlueToolFixup | 2.6.9 |
 | USBToolBox + UTBMap | 1.2.0 / 1.1 |
 | RTL812xLucy | 1.1.1 |
@@ -215,10 +216,11 @@ So it has nothing to do with the GPU and everything to do with **WhateverGreen**
 
 ```
 IO80211Family 1200.13.1 (shipped by the system, inside BootKernelExtensions)
-└── AirportItlwm.kext 2.4.0 (Tahoe build)   ← this one only; nothing else
+├── ForbiddenItlwm.kext 0.6.0-beta.2 (Tahoe build)  ← since v2.0.0, replaces AirportItlwm
+└── BTLEAdvFixup.kext 0.9.3                        ← only patches bluetoothd's BLE advertising
 ```
 
-`AirportItlwm-Tahoe` declares its dependencies plainly in `OSBundleLibraries`: `com.apple.iokit.IO80211Family 1.5.0` and `com.apple.iokit.IOSkywalkFamily 1.0`, i.e. the **stock** ones. Which means:
+`ForbiddenItlwm` (the AWDL branch of `AirportItlwm`) declares its dependencies plainly in `OSBundleLibraries`: `com.apple.iokit.IO80211Family 1.5.0` and `com.apple.iokit.IOSkywalkFamily 1.0`, i.e. the **stock** ones. Which means:
 
 - no `IOSkywalkFamily.kext`, `IO80211FamilyLegacy.kext` or `AirPortBrcmNIC.kext`;
 - no `IOSkywalkFamily` block;
@@ -277,7 +279,7 @@ ioreg -r -c IOHDACodecDevice -l | grep IOHDACodecVendorID       # should report 
 
 ```
 keepsyms=1 amfi_get_out_of_my_way=0x1 amfi=0x80 ipc_control_port_options=0
-nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1
+nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1 -btleadv -itlawdlcoexprobe -itlawdliface -itlawdlnativeup -itlawdlcoexrx -itlawdlcoextx -itlawdlcoexmulti -itlawdlcoexdata -itlawdlmitx -itlawdlelicit -itlawdlcaps -itlawdlsvcmerge -itlawdlawsync itlawdlintcoal=4 -itlawdlcoexbatx -itlawdlcoexpeerpause -itlawdlcoexbatrace itlawdltxqueue=4096
 ```
 
 | Flag | What it does |
@@ -290,6 +292,8 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1
 | `-lilubetaall` | lets Lilu and its plug-ins load on newer OS versions |
 | `gfxrst=4` | a WhateverGreen boot-screen flag. WEG is not enabled here, so it is inert; do not remove it if you enable WEG yourself |
 | `itlwm_he=1` | enables 802.11ax (Wi-Fi 6), added in v1.1.1. `itlwm`'s HE implementation is off by default and conservative, so the negotiated rate is not necessarily higher than ac (measured: ax 245 Mbps vs ac 260 Mbps). If you see disconnects or a clear slowdown, drop this flag to fall back to ac |
+| `-btleadv` | turns on `BTLEAdvFixup` so `bluetoothd` can start Bluetooth LE advertising on the Intel controller. AirDrop starts with BLE discovery; without this it does not work at all |
+| the `-itlawdl*` set (18 flags) | turns AWDL on: a second firmware context, the `awdl0` interface, the channel-149 listener, Block Ack aggregation and more. **Add the whole set** — with only part of it other devices do not list this Mac, or transfers stall. Full list and measurements: [releases/v2.0.0](docs/releases/v2.0.0.md) |
 
 ### 6. Logging is off
 
@@ -340,7 +344,7 @@ This EFI has been fully audited; the following issues were fixed (see the commit
 
 - **The GPU driver is a third-party reverse-engineering effort.** Its kexts live in `/Library/Extensions` and load from the Auxiliary Kernel Collection; every macOS major release may require waiting for the driver to catch up. Before upgrading, check the [releases](https://github.com/nullmoth/nvidia-macos-driver/releases) and `CHANGELOG`.
 - **Only Turing and newer GPUs are supported.** Older cards such as Pascal and Maxwell are out of scope.
-- **Wi-Fi needs no root patch, but has protocol limits.** `AirportItlwm` is injected by OpenCore and runs on the native 802.11 stack, so it **cannot join WPA3-only networks, does not support mandatory PMF, and has no AWDL / AirDrop / Handoff**. Wi-Fi 6 (802.11ax) is off by default; add `itlwm_he=1` if your card supports it.
+- **Wi-Fi needs no root patch, but has protocol limits.** The driver is injected by OpenCore and runs on the native 802.11 stack, so it **cannot join WPA3-only networks and does not support mandatory PMF**. AirDrop works since v2.0.0 (needs `BTLEAdvFixup` plus the whole `-itlawdl*` set). Wi-Fi 6 (802.11ax) is off by default; add `itlwm_he=1` if your card supports it.
 - **Audio depends on one specific layout.** ALC897 uses `layout-id = 77`; on another board or codec you must pick a matching layout, otherwise the device appears but the jacks are wrong (speakers only, dead microphone, and so on).
 - **The `i5-12400F` has no iGPU**, so Sidecar hardware encoding is unavailable, and there is no GUI at all without the dGPU.
 - **Porting to another motherboard is not guaranteed.** `SSDT-RTCAWAC` and `SSDT-SBUS` in the ACPI folder were generated for this board specifically; regenerate them for a different one.
@@ -480,6 +484,22 @@ diskutil apfs updatePreboot diskXsY   # run right after a successful unlock to r
 ---
 
 ## Changelog
+
+### v2.0.0 (2026-11-18)
+
+**Wi-Fi moves to `ForbiddenItlwm`; AirDrop now works**
+
+| Item | v1.1.1 | v2.0.0 |
+| --- | --- | --- |
+| Wi-Fi driver | `AirportItlwm` 2.4.0 | **`ForbiddenItlwm` 0.6.0-beta.2** |
+| Bluetooth | `IntelBTPatcher` enabled | **disabled**, `BTLEAdvFixup` 0.9.3 takes over |
+| AirDrop | not available | **works** |
+| `PowerTimeoutKernelPanic` | `true` | **`false`** |
+
+- **Why the driver changed**: with 2.4.0 scans periodically timed out (`airportd` logged `-3905`, always 20.19 s) and the driver's own `ItlwmScanStats` showed `timeout` and `notready` climbing — the firmware's scan-complete notification was being lost. On the 2.4.1-based `ForbiddenItlwm`, a scan returns 18 networks in 9 s
+- **AirDrop needs three things together**: `BTLEAdvFixup.kext`, the whole 18-flag `-itlawdl*` set, and `IntelBTPatcher` disabled (it hooks the same function; Lilu panics when two plugins do)
+- **`PowerTimeoutKernelPanic` set to `false`**: it rewrites the kernel string `com.apple` to `not.apple`, which pf's anchor check shares, leaving `net.filter_state=pf` and `enable_netagent=0` — AirDrop's QUIC then runs without pacing. Revert to `true` if sleep/wake panics
+- Measurements (`ItlwmAWDLMiState=on`, `ITLAWDLCoexChannel=149`, `BTLEAdvHookRouted=1`, `PeerSyncFrames` climbing) and per-item rollback: [releases/v2.0.0](docs/releases/v2.0.0.md)
 
 ### v1.1.1 (2026-11-03)
 

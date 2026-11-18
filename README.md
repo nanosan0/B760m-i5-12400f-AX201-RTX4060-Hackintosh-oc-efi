@@ -2,10 +2,10 @@
 
 **简体中文** · [English](README_EN.md) · 🌐 [网页版说明（可切换语言）](https://nanosan0.github.io/B760m-i5-12400f-AX201-RTX4060-Hackintosh-oc-efi/)
 
-> **v1.1.1**（2026-11-03）· OpenCore **1.0.9**（`REL-109-2026-09-30`）· Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
+> **v2.0.0**（2026-11-18）· OpenCore **1.0.9**（`REL-109-2026-09-30`）· Intel i5-12400F · NVIDIA RTX 4060（NullMoth Metal 驱动）  
 > 已通过官方 `ocvalidate` 校验：**No issues found.**
 >
-> **从 v1.1.0 起不再使用 OCLP-Mod 根补丁。** Wi-Fi 改用 `AirportItlwm` 2.4.0（Tahoe 原生 802.11 栈），声卡由 `SimpleHDA` 恢复原版 `AppleHDA`。改动细节见[更新日志](#更新日志)。
+> **从 v1.1.0 起不再使用 OCLP-Mod 根补丁。** Wi-Fi 自 v2.0.0 换成 `ForbiddenItlwm` 0.6.0-beta.2（AWDL 分支，**隔空投送可用**），声卡由 `SimpleHDA` 恢复原版 `AppleHDA`。改动细节见[更新日志](#更新日志)。
 
 这是一份经过逐项审计的 OpenCore EFI。所有配置项都能在官方 `Configuration.tex` 中找到依据，没有来路不明的键，也没有靠「抄别人的 EFI」堆出来的参数。
 
@@ -58,7 +58,7 @@
 
 | 组件                                 | 版本                                                                                                 |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
-| EFI 版本                             | **v1.1.1**（2026-11-03）                                                                             |
+| EFI 版本                             | **v2.0.0**（2026-11-18）                                                                             |
 | OpenCore                           | 1.0.9（`REL-109-2026-09-30`，x64）                                                                    |
 | 显卡驱动                               | [NullMoth nvidia-macos-driver](https://github.com/nullmoth/nvidia-macos-driver)（Metal 翻译层，Turing+） |
 | 目标系统                               | macOS 26 Tahoe（26.x / Darwin 25.x）                                                                  |
@@ -70,9 +70,10 @@
 | CPUFriend + DataProvider           | 1.3.1 / 1.0.1                                                                                      |
 | NVMeFix                            | 1.1.4                                                                                              |
 | AMFIPass                           | 1.4.1                                                                                              |
-| AirportItlwm                       | **2.4.0（Tahoe 构建）**，构建号 `7204c69`                                                                |
+| ForbiddenItlwm                     | **0.6.0-beta.2（Tahoe 构建）**，AWDL / AirDrop 分支（基于 `AirportItlwm` 2.4.1）                            |
+| BTLEAdvFixup                       | **0.9.3**（v2.0.0 新增，AirDrop 的蓝牙 LE 广播）                                                          |
 | SimpleHDA                          | **1.0.0**（v1.1.0 新增，恢复原版 `AppleHDA`）                                                             |
-| IntelBluetoothFirmware / BTPatcher | 2.5.0                                                                                              |
+| IntelBluetoothFirmware            | 2.5.0（`IntelBTPatcher` 已停用，由 `BTLEAdvFixup` 接管）                                                                                              |
 | BlueToolFixup                      | 2.6.9                                                                                              |
 | USBToolBox + UTBMap                | 1.2.0 / 1.1                                                                                        |
 | RTL812xLucy                        | 1.1.1                                                                                              |
@@ -218,10 +219,11 @@ Metal App → NVMTLDriver.bundle → 翻译器 (AIR → SPIR-V) → NVK (Mesa Vu
 
 ```
 IO80211Family 1200.13.1（系统自带，在 BootKernelExtensions 里）
-└── AirportItlwm.kext 2.4.0（Tahoe 构建）   ← 就这一个，别再往里塞别的
+├── ForbiddenItlwm.kext 0.6.0-beta.2（Tahoe 构建）  ← v2.0.0 起，替代 AirportItlwm
+└── BTLEAdvFixup.kext 0.9.3                        ← 只补 bluetoothd 的 BLE 广播，不碰 IO80211
 ```
 
-`AirportItlwm-Tahoe` 的 `OSBundleLibraries` 写得很清楚：它依赖 `com.apple.iokit.IO80211Family 1.5.0` 和 `com.apple.iokit.IOSkywalkFamily 1.0`，也就是**系统自带的**那两套。由此推出：
+`ForbiddenItlwm`（即 `AirportItlwm` 的 AWDL 分支）的 `OSBundleLibraries` 写得很清楚：它依赖 `com.apple.iokit.IO80211Family 1.5.0` 和 `com.apple.iokit.IOSkywalkFamily 1.0`，也就是**系统自带的**那两套。由此推出：
 
 - 不需要 `IOSkywalkFamily.kext`、`IO80211FamilyLegacy.kext`、`AirPortBrcmNIC.kext` 这三个 Apple 原版文件；
 - 不需要屏蔽 `IOSkywalkFamily`；
@@ -293,6 +295,8 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1
 | `-lilubetaall`                           | 允许 Lilu 及其插件在较新的系统版本上加载                                           |
 | `gfxrst=4`                               | WhateverGreen 的启动画面参数。本配置未启用 WEG，留着不影响启动；自行启用 WEG 的机器不要删 |
 | `itlwm_he=1`                             | 开启 802.11ax（Wi-Fi 6），v1.1.1 起加入。`itlwm` 的 HE 实现默认关闭且偏保守，协商速率未必高于 ac（实测 ax 245 Mbps vs ac 260 Mbps）；若出现断连或明显掉速，删掉本项即可回退到 ac |
+| `-btleadv`                               | 启用 `BTLEAdvFixup`，让 `bluetoothd` 能在 Intel 网卡上发起 BLE 广播。AirDrop 的第一步就是蓝牙 LE 发现，删掉它 AirDrop 直接失效 |
+| `-itlawdl*` 一组（18 个）                   | 打开 AWDL：第二个固件上下文、`awdl0` 接口、149 信道的监听器、Block Ack 聚合等。**必须整套加**，缺项会表现为「别的设备列不出这台 Mac」或传输极慢。完整清单与实测数据见 [releases/v2.0.0](docs/releases/v2.0.0.md) |
 
 ### 6. 日志已关闭
 
@@ -343,7 +347,7 @@ nvfb=1 nvaccel=1 nvfbheads=4 -nvkmsnosmooth -lilubetaall gfxrst=4 itlwm_he=1
 
 - **显卡驱动是第三方逆向工程产物。** 驱动的 kext 装在 `/Library/Extensions` 并从 Auxiliary Kernel Collection 加载，macOS 每次大版本升级都可能需要等驱动跟进新版本。升级系统前务必先看 [releases](https://github.com/nullmoth/nvidia-macos-driver/releases) 和 `CHANGELOG`。
 - **显卡只支持 Turing 及更新架构。** Pascal、Maxwell 等更老的卡不在支持范围内。
-- **Wi-Fi 不需要根补丁，但有协议限制。** `AirportItlwm` 由 OpenCore 注入、跑在系统原生 802.11 栈上，所以**连不了 WPA3-only 网络、不支持强制 PMF、不支持 AWDL / AirDrop / 接力**；Wi-Fi 6（802.11ax）默认关闭，需要时在 boot-args 加 `itlwm_he=1`（需 `itlwm` 支持的硬件）。
+- **Wi-Fi 不需要根补丁，但有协议限制。** 驱动由 OpenCore 注入、跑在系统原生 802.11 栈上，所以**连不了 WPA3-only 网络、不支持强制 PMF**；隔空投送自 v2.0.0 起可用（需 `BTLEAdvFixup` + 整套 `-itlawdl*` 参数）。Wi-Fi 6（802.11ax）默认关闭，需要时在 boot-args 加 `itlwm_he=1`（需 `itlwm` 支持的硬件）。
 - **声卡只有一个可用 layout。** ALC897 用 `layout-id = 77`；换主板或换 codec 需要重新挑 layout，否则设备能认出来但接口对不上（比如只有耳机响、麦克风不工作）。
 - **`i5-12400F` 无核显**，无法使用 Sidecar / 随航的硬件编码，也无法在无独显时启动 GUI。
 - **不保证移植到其他主板可用。** ACPI 中的 `SSDT-RTCAWAC`、`SSDT-SBUS` 是针对这块板子生成的；换主板请重新生成。
@@ -483,6 +487,22 @@ diskutil apfs updatePreboot diskXsY   # 解锁成功后立刻执行，重建 Pre
 ---
 
 ## 更新日志
+
+### v2.0.0（2026-11-18）
+
+**Wi-Fi 换成 `ForbiddenItlwm`，隔空投送打通**
+
+| 项目 | v1.1.1 | v2.0.0 |
+| --- | --- | --- |
+| Wi-Fi 驱动 | `AirportItlwm` 2.4.0 | **`ForbiddenItlwm` 0.6.0-beta.2** |
+| 蓝牙 | `IntelBTPatcher` 启用 | **停用**，改由 `BTLEAdvFixup` 0.9.3 接管 |
+| 隔空投送 | 不可用 | **可用** |
+| `PowerTimeoutKernelPanic` | `true` | **`false`** |
+
+- **换驱动的原因**：2.4.0 的扫描请求会周期性超时（`airportd` 报 `-3905`，固定 20.19 s），驱动侧 `ItlwmScanStats` 显示 `timeout` 与 `notready` 同时增长，属于固件的扫描完成通知丢失。换到 2.4.1 分支的 `ForbiddenItlwm` 后，扫描 9 s 返回 18 个网络
+- **隔空投送需要三样同时到位**：`BTLEAdvFixup.kext`、整套 18 个 `-itlawdl*` 参数、停用 `IntelBTPatcher`（与前者 hook 同一函数，Lilu 不允许两个插件共存，否则 panic）
+- **`PowerTimeoutKernelPanic` 改 `false`**：它会把内核字符串 `com.apple` 改写成 `not.apple`，而 pf 的 anchor 校验共用该字符串，导致 `net.filter_state=pf` / `enable_netagent=0`，AirDrop 的 QUIC 失去节奏控制。若睡眠唤醒出现 panic，可改回 `true`
+- 实测数据（`ItlwmAWDLMiState=on`、`ITLAWDLCoexChannel=149`、`BTLEAdvHookRouted=1`、`PeerSyncFrames` 持续增长）与逐项回滚方法见 [releases/v2.0.0](docs/releases/v2.0.0.md)
 
 ### v1.1.1（2026-11-03）
 
